@@ -11,22 +11,39 @@ name = "bip39_pm"
 [[bin]]
 name = "pm"
 path = "src/bin/pm.rs"
+required-features = ["cli"]
+
+[features]
+default = ["cli", "os-rng"]
+# Системный ГСЧ: генерация seed и nonce индекса внутри библиотеки.
+os-rng = ["dep:getrandom", "bip39/rand"]
+cli = ["os-rng", "dep:clap", "dep:rpassword", "dep:dirs"]
+
+[workspace]
+members = [".", "wasm"]
 
 [dependencies]
-bip39 = { version = "2", features = ["rand"] }
+bip39 = { version = "2", default-features = false, features = ["std"] }
 bip32 = { version = "0.5", default-features = false, features = ["secp256k1", "std"] }
 hmac = "0.12"
 sha2 = "0.10"
 hkdf = "0.12"
 zeroize = { version = "1", features = ["derive"] }
-chacha20poly1305 = "0.10"
-getrandom = "0.2"
+chacha20poly1305 = { version = "0.10", default-features = false, features = ["alloc"] }
+getrandom = { version = "0.2", optional = true }
 unicode-normalization = "0.1"
 url = "2"
 psl = "=2.1.244"  # PSL заморожен: смена списка может изменить eTLD+1 и пароли
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-clap = { version = "4", features = ["derive", "env"] }
-rpassword = "7"
-dirs = "5"
+clap = { version = "4", features = ["derive", "env"], optional = true }
+rpassword = { version = "7", optional = true }
+dirs = { version = "5", optional = true }
+
+[dev-dependencies]
 hex = "0.4"
+
+[profile.release]
+opt-level = "s"
+lto = true
+codegen-units = 1

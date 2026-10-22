@@ -86,6 +86,16 @@ impl AppKey {
         Ok(AppKey(k))
     }
 
+    /// Восстановление из сохранённого `k_app` (сессия расширения браузера).
+    pub fn from_bytes(k_app: [u8; 32]) -> Self {
+        AppKey(Zeroizing::new(k_app))
+    }
+
+    /// Сырой `k_app`. Равнозначен seed для всех паролей — не сохранять на диск.
+    pub fn to_bytes(&self) -> [u8; 32] {
+        *self.0
+    }
+
     fn expand(&self, info: &[u8], out: &mut [u8]) {
         Hkdf::<Sha256>::new(Some(HKDF_SALT), self.0.as_ref())
             .expand(info, out)

@@ -1,3 +1,5 @@
 /target
 *.pmx
 *.tmp
+extension/pm_core.wasm
+node_modules/
