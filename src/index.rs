@@ -12,7 +12,7 @@ use crate::{Error, Result};
 const MAGIC: &[u8; 4] = b"PMIX";
 const VERSION: u8 = 1;
 const HEADER_LEN: usize = 5;
-const NONCE_LEN: usize = 24;
+pub const NONCE_LEN: usize = 24;
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Entry {
@@ -50,9 +50,16 @@ impl Index {
             .sort_by(|a, b| (&a.domain, &a.login).cmp(&(&b.domain, &b.login)));
     }
 
+    #[cfg(feature = "os-rng")]
     pub fn encrypt(&self, key: &[u8; 32]) -> Result<Vec<u8>> {
         let mut nonce = [0u8; NONCE_LEN];
         getrandom::getrandom(&mut nonce).map_err(|e| Error::Index(e.to_string()))?;
+        self.encrypt_with_nonce(key, &nonce)
+    }
+
+    /// Шифрование с внешним nonce (WASM берёт его из `crypto.getRandomValues`).
+    /// Nonce обязан быть случайным и не повторяться.
+    pub fn encrypt_with_nonce(&self, key: &[u8; 32], nonce: &[u8; NONCE_LEN]) -> Result<Vec<u8>> {
         let plain = zeroize::Zeroizing::new(
             serde_json::to_vec(self).map_err(|e| Error::Index(e.to_string()))?,
         );
@@ -61,14 +68,14 @@ impl Index {
         out.push(VERSION);
         let ct = XChaCha20Poly1305::new(key.into())
             .encrypt(
-                XNonce::from_slice(&nonce),
+                XNonce::from_slice(nonce),
                 Payload {
                     msg: &plain,
                     aad: &out[..HEADER_LEN],
                 },
             )
             .map_err(|_| Error::Index("ошибка шифрования".into()))?;
-        out.extend_from_slice(&nonce);
+        out.extend_from_slice(nonce);
         out.extend_from_slice(&ct);
         Ok(out)
     }

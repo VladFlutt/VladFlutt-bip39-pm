@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <title>bip39-pm</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <main id="locked" hidden>
+    <h1>bip39-pm</h1>
+    <label for="mnemonic">Seed-фраза</label>
+    <textarea id="mnemonic" rows="3" autocomplete="off" spellcheck="false" placeholder="12 или 24 слова через пробел"></textarea>
+    <label for="passphrase">Passphrase (необязательно)</label>
+    <input id="passphrase" type="password" autocomplete="off">
+    <button id="unlock" class="primary">Разблокировать</button>
+    <button id="new-seed" class="link">Создать новую seed-фразу</button>
+    <button id="reset-index" class="link" hidden>Удалить индекс другой seed из браузера</button>
+    <div id="generated" hidden>
+      <p class="warn">Запишите фразу на бумагу. Не фотографируйте и не храните её в облаке. Используйте отдельную фразу, не ту, на которой лежат криптоактивы.</p>
+      <code id="generated-words"></code>
+    </div>
+  </main>
+
+  <main id="unlocked" hidden>
+    <header>
+      <div>
+        <div id="domain" class="domain"></div>
+        <div class="muted">отпечаток: <span id="fingerprint"></span></div>
+      </div>
+      <button id="lock" class="link">Заблокировать</button>
+    </header>
+    <p id="insecure" class="warn" hidden>Сайт открыт без HTTPS: пароль могут перехватить.</p>
+    <div id="site-error" class="warn" hidden></div>
+
+    <div id="form">
+      <label for="login">Логин</label>
+      <input id="login" list="logins" autocomplete="off" spellcheck="false">
+      <datalist id="logins"></datalist>
+
+      <div class="row">
+        <label>Версия <input id="counter" type="number" min="1" value="1"></label>
+        <label>Длина <input id="length" type="number" min="8" max="64" value="20"></label>
+      </div>
+      <div class="row classes">
+        <label><input id="lower" type="checkbox" checked> a-z</label>
+        <label><input id="upper" type="checkbox" checked> A-Z</label>
+        <label><input id="digits" type="checkbox" checked> 0-9</label>
+        <label><input id="symbols" type="checkbox" checked> !#$</label>
+      </div>
+
+      <div class="password">
+        <input id="password" type="password" readonly>
+        <button id="reveal" class="link" title="Показать">показать</button>
+      </div>
+      <div class="muted">проверка: <span id="check"></span></div>
+
+      <div class="actions">
+        <button id="fill" class="primary">Заполнить</button>
+        <button id="copy">Копировать</button>
+      </div>
+      <div class="actions">
+        <button id="save">Сохранить</button>
+        <button id="rotate">Сменить пароль</button>
+      </div>
+    </div>
+
+    <footer>
+      <span id="index-info" class="muted"></span>
+      <button id="export" class="link">Экспорт</button>
+      <label class="link file">Импорт<input id="import" type="file" accept=".pmx" hidden></label>
+    </footer>
+  </main>
+
+  <div id="status" role="status"></div>
+  <script type="module" src="popup.js"></script>
+</body>
+</html>
