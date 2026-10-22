@@ -126,8 +126,9 @@ $("new-seed").addEventListener("click", () =>
 $("lock").addEventListener("click", () => guarded(async () => (await send("lock"), showLocked())));
 
 $("login").addEventListener("input", () => {
-  const entry = entries.find((e) => e.login === $("login").value.trim().toLowerCase());
-  if (entry) applyEntry(entry);
+  // Другой логин: его сохранённые настройки или значения по умолчанию,
+  // чтобы версия от предыдущего аккаунта не перенеслась.
+  applyEntry(entries.find((e) => e.login === $("login").value.trim().toLowerCase()));
   refreshPassword();
 });
 for (const id of ["counter", "length", "lower", "upper", "digits", "symbols"]) {
