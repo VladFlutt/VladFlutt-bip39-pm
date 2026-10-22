@@ -23,13 +23,36 @@
       <h1>Пароли из seed-фразы</h1>
       <p class="lead">Пароль для каждого сайта вычисляется из вашей BIP39 seed-фразы, домена и логина. Хранить пароли не нужно: после потери устройства они восстанавливаются из той же фразы.</p>
 
-      <div class="card">
+      <div id="signin" class="card" hidden>
+        <label for="signin-login">Логин</label>
+        <input id="signin-login" autocomplete="username" autocapitalize="off" spellcheck="false">
+        <label for="signin-password">Мастер-пароль</label>
+        <input id="signin-password" type="password" autocomplete="current-password">
+        <button id="signin-submit" class="primary wide">Войти</button>
+        <div class="row-links">
+          <button id="use-seed" class="link">Войти seed-фразой</button>
+          <button id="forget" class="link danger">Удалить вход с устройства</button>
+        </div>
+      </div>
+
+      <div id="seed" class="card">
         <label for="mnemonic">Seed-фраза</label>
         <textarea id="mnemonic" rows="3" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="12 или 24 слова через пробел"></textarea>
         <label for="passphrase">Passphrase <span class="muted">(необязательно)</span></label>
         <input id="passphrase" type="password" autocomplete="off">
+        <label class="check"><input id="remember" type="checkbox"> Создать вход по логину и паролю на этом устройстве</label>
+        <div id="remember-fields" hidden>
+          <label for="new-login">Логин</label>
+          <input id="new-login" autocomplete="username" autocapitalize="off" spellcheck="false">
+          <label for="new-password">Мастер-пароль <span class="muted">(не короче 10 символов)</span></label>
+          <input id="new-password" type="password" autocomplete="new-password">
+          <label for="new-password2">Повторите мастер-пароль</label>
+          <input id="new-password2" type="password" autocomplete="new-password">
+          <p class="hint">Seed-фраза не сохраняется. На устройстве останется только ключ, зашифрованный мастер-паролем (Argon2id). Забытый мастер-пароль не восстановить, войти можно будет только seed-фразой, поэтому её всё равно нужно хранить на бумаге.</p>
+        </div>
         <button id="unlock" class="primary wide">Открыть</button>
         <div class="row-links">
+          <button id="use-signin" class="link" hidden>Войти по логину</button>
           <button id="new-seed" class="link">Создать новую seed-фразу</button>
           <button id="reset-index" class="link danger" hidden>Удалить индекс другой seed</button>
         </div>
@@ -41,7 +64,7 @@
 
       <ul class="facts">
         <li><b>Всё считается в браузере.</b> Seed-фраза и пароли не отправляются в сеть: политика безопасности страницы запрещает любые внешние запросы.</li>
-        <li><b>Ничего не сохраняется.</b> Ключ живёт только в памяти вкладки и стирается после 5 минут бездействия или при закрытии.</li>
+        <li><b>Seed-фраза не сохраняется.</b> Открытый ключ живёт только в памяти вкладки и стирается после 5 минут бездействия. Вход по логину хранит на устройстве лишь ключ, зашифрованный мастер-паролем.</li>
         <li><b>Совместимо.</b> Те же пароли выдают CLI <code>pm</code> и расширение для браузера. <a href="https://github.com/VladFlutt/VladFlutt-bip39-pm" rel="noreferrer">Исходный код и спецификация</a>.</li>
       </ul>
     </section>

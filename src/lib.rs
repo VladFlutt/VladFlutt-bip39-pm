@@ -8,6 +8,7 @@ pub mod derive;
 pub mod index;
 pub mod normalize;
 pub mod policy;
+pub mod vault;
 
 pub use derive::{AppKey, Site};
 pub use index::{Entry, Index};
@@ -20,6 +21,7 @@ pub enum Error {
     Domain(String),
     Policy(String),
     Index(String),
+    Vault(String),
 }
 
 impl std::fmt::Display for Error {
@@ -30,6 +32,7 @@ impl std::fmt::Display for Error {
             Error::Domain(m) => write!(f, "некорректный домен: {m}"),
             Error::Policy(m) => write!(f, "некорректная политика: {m}"),
             Error::Index(m) => write!(f, "ошибка индекса: {m}"),
+            Error::Vault(m) => write!(f, "{m}"),
         }
     }
 }

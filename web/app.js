@@ -1,10 +1,12 @@
 // Веб-версия bip39-pm. Всё вычисляется в браузере тем же WASM-ядром, что у
 // CLI и расширения. k_app живёт только в памяти этой вкладки; в localStorage
-// лежит лишь зашифрованный индекс (домены, логины, счётчики, политики).
+// лежат зашифрованный индекс (домены, логины, счётчики, политики) и, если
+// пользователь создал вход по логину, k_app под мастер-паролем (Argon2id).
 
 import { DEFAULT_POLICY, loadCore, toHex, upsertEntry } from "./core.js";
 
 const INDEX_KEY = "bip39-pm.index";
+const VAULTS_KEY = "bip39-pm.vaults";
 const AUTOLOCK_MS = 5 * 60 * 1000;
 const CLIPBOARD_CLEAR_MS = 30_000;
 
@@ -49,6 +51,39 @@ function persistIndex() {
   }
 }
 
+// --- вход по логину ---
+
+function readVaults() {
+  try {
+    return JSON.parse(localStorage.getItem(VAULTS_KEY)) ?? {};
+  } catch {
+    return {};
+  }
+}
+
+function writeVaults(vaults) {
+  try {
+    if (Object.keys(vaults).length) localStorage.setItem(VAULTS_KEY, JSON.stringify(vaults));
+    else localStorage.removeItem(VAULTS_KEY);
+  } catch (e) {
+    throw new Error(`Не удалось сохранить вход: ${e.message}`);
+  }
+}
+
+// Та же нормализация логина, что в ядре: NFKC, обрезка, нижний регистр.
+const normLogin = (s) => s.normalize("NFKC").trim().toLowerCase();
+
+// Argon2id занимает долю секунды и блокирует поток: сначала показываем статус.
+const nextFrame = () => new Promise((r) => requestAnimationFrame(() => setTimeout(r, 0)));
+
+function showSignin(show) {
+  const hasVaults = Object.keys(readVaults()).length > 0;
+  $("signin").hidden = !(show && hasVaults);
+  $("seed").hidden = !$("signin").hidden;
+  $("use-signin").hidden = !hasVaults;
+  (show && hasVaults ? $("signin-login") : $("mnemonic")).focus();
+}
+
 // --- сессия ---
 
 function touch() {
@@ -61,17 +96,54 @@ function lock() {
   kApp = null;
   index = { entries: [] };
   clearTimeout(autolockTimer);
-  for (const id of ["site", "login", "password", "mnemonic", "passphrase"]) $(id).value = "";
+  for (const id of ["site", "login", "password", "mnemonic", "passphrase", "signin-password", "new-password", "new-password2"])
+    $(id).value = "";
   $("password").type = "password";
   $("reveal").textContent = "Показать";
   $("session").hidden = true;
   $("unlocked").hidden = true;
   $("locked").hidden = false;
-  $("mnemonic").focus();
+  showSignin(true);
+}
+
+function rememberRequest() {
+  if (!$("remember").checked) return null;
+  const login = $("new-login").value.trim();
+  const password = $("new-password").value;
+  if (!login) throw new Error("Укажите логин для входа");
+  if ([...password].length < 10) throw new Error("Мастер-пароль должен быть не короче 10 символов");
+  if (password !== $("new-password2").value) throw new Error("Мастер-пароли не совпадают");
+  return { login, password };
 }
 
 const unlock = guarded(async () => {
+  const remember = rememberRequest();
   const { k_app, fingerprint } = core.unlock($("mnemonic").value, $("passphrase").value);
+  openSession(k_app, fingerprint);
+  if (remember) {
+    status("Шифрую вход…");
+    await nextFrame();
+    const { data, login } = core.sealVault(k_app, remember.login, remember.password);
+    writeVaults({ ...readVaults(), [login]: data });
+    $("remember").checked = false;
+    $("remember-fields").hidden = true;
+    for (const id of ["new-login", "new-password", "new-password2"]) $(id).value = "";
+    status(`Вход для «${login}» создан. Отпечаток: ${fingerprint}`, "ok");
+  }
+});
+
+const signin = guarded(async () => {
+  const login = $("signin-login").value.trim();
+  const data = readVaults()[normLogin(login)];
+  if (!login || !data) throw new Error("Неверный логин или пароль");
+  status("Проверяю…");
+  await nextFrame();
+  const { k_app, fingerprint } = core.openVault(data, login, $("signin-password").value);
+  $("signin-password").value = "";
+  openSession(k_app, fingerprint);
+});
+
+function openSession(k_app, fingerprint) {
   const stored = readStoredIndex();
   let loaded = { entries: [] };
   if (stored) {
@@ -79,6 +151,7 @@ const unlock = guarded(async () => {
       loaded = core.decryptIndex(k_app, stored);
     } catch {
       $("reset-index").hidden = false;
+      showSignin(false);
       throw new Error("Сохранённый в браузере индекс зашифрован другой seed-фразой или passphrase. Проверьте фразу.");
     }
   }
@@ -96,7 +169,7 @@ const unlock = guarded(async () => {
   touch();
   $("site").focus();
   status(`Открыто. Сверьте отпечаток: ${fingerprint}`, "ok");
-});
+}
 
 // --- форма ---
 
@@ -235,6 +308,29 @@ $("mnemonic").addEventListener("keydown", (e) => {
   }
 });
 $("passphrase").addEventListener("keydown", (e) => e.key === "Enter" && unlock());
+$("signin-submit").addEventListener("click", signin);
+for (const id of ["signin-login", "signin-password"])
+  $(id).addEventListener("keydown", (e) => e.key === "Enter" && signin());
+$("use-seed").addEventListener("click", () => (status(""), showSignin(false)));
+$("use-signin").addEventListener("click", () => (status(""), showSignin(true)));
+$("remember").addEventListener("change", () => {
+  $("remember-fields").hidden = !$("remember").checked;
+  if ($("remember").checked) $("new-login").focus();
+});
+$("forget").addEventListener(
+  "click",
+  guarded(async () => {
+    const login = normLogin($("signin-login").value);
+    const vaults = readVaults();
+    if (!login || !vaults[login]) throw new Error("Введите логин, вход для которого нужно удалить");
+    if (!confirm(`Удалить вход «${login}» с этого устройства? Пароли не изменятся, открыть их можно будет seed-фразой.`)) return;
+    delete vaults[login];
+    writeVaults(vaults);
+    $("signin-password").value = "";
+    showSignin(true);
+    status("Вход удалён", "ok");
+  }),
+);
 $("lock").addEventListener("click", () => (lock(), status("Заблокировано")));
 
 $("new-seed").addEventListener(
