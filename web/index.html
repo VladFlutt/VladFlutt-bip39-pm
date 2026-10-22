@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <title>bip39-pm — пароли из seed-фразы</title>
+  <meta name="description" content="Детерминированный менеджер паролей: пароли вычисляются из BIP39 seed-фразы прямо в браузере, без сервера и без хранилища паролей.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%232f6fde'/%3E%3Cpath d='M11 14v-3a5 5 0 0 1 10 0v3' stroke='white' stroke-width='2.5' fill='none'/%3E%3Crect x='8' y='14' width='16' height='11' rx='2.5' fill='white'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="top">
+    <div class="brand">bip39-pm</div>
+    <div id="session" hidden>
+      <span class="muted">отпечаток <b id="fingerprint"></b></span>
+      <button id="lock" class="link">Заблокировать</button>
+    </div>
+  </header>
+
+  <main>
+    <section id="locked" hidden>
+      <h1>Пароли из seed-фразы</h1>
+      <p class="lead">Пароль для каждого сайта вычисляется из вашей BIP39 seed-фразы, домена и логина. Хранить пароли не нужно: после потери устройства они восстанавливаются из той же фразы.</p>
+
+      <div class="card">
+        <label for="mnemonic">Seed-фраза</label>
+        <textarea id="mnemonic" rows="3" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="12 или 24 слова через пробел"></textarea>
+        <label for="passphrase">Passphrase <span class="muted">(необязательно)</span></label>
+        <input id="passphrase" type="password" autocomplete="off">
+        <button id="unlock" class="primary wide">Открыть</button>
+        <div class="row-links">
+          <button id="new-seed" class="link">Создать новую seed-фразу</button>
+          <button id="reset-index" class="link danger" hidden>Удалить индекс другой seed</button>
+        </div>
+        <div id="generated" hidden>
+          <p class="warn">Запишите фразу на бумагу и храните офлайн. Используйте отдельную фразу, а не ту, на которой лежат криптоактивы.</p>
+          <code id="generated-words"></code>
+        </div>
+      </div>
+
+      <ul class="facts">
+        <li><b>Всё считается в браузере.</b> Seed-фраза и пароли не отправляются в сеть: политика безопасности страницы запрещает любые внешние запросы.</li>
+        <li><b>Ничего не сохраняется.</b> Ключ живёт только в памяти вкладки и стирается после 5 минут бездействия или при закрытии.</li>
+        <li><b>Совместимо.</b> Те же пароли выдают CLI <code>pm</code> и расширение для браузера. <a href="https://github.com/VladFlutt/VladFlutt-bip39-pm" rel="noreferrer">Исходный код и спецификация</a>.</li>
+      </ul>
+    </section>
+
+    <section id="unlocked" hidden>
+      <div class="card">
+        <label for="site">Сайт</label>
+        <input id="site" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="github.com или https://…">
+        <div class="hint">домен: <b id="domain">—</b></div>
+
+        <label for="login">Логин</label>
+        <input id="login" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="e-mail или имя пользователя">
+
+        <div class="grid">
+          <label>Версия <input id="counter" type="number" min="1" value="1"></label>
+          <label>Длина <input id="length" type="number" min="8" max="64" value="20"></label>
+        </div>
+        <div class="classes">
+          <label><input id="lower" type="checkbox" checked> a-z</label>
+          <label><input id="upper" type="checkbox" checked> A-Z</label>
+          <label><input id="digits" type="checkbox" checked> 0-9</label>
+          <label><input id="symbols" type="checkbox" checked> !#$</label>
+        </div>
+
+        <div class="password">
+          <input id="password" type="password" readonly aria-label="Пароль">
+          <button id="reveal" class="ghost">Показать</button>
+          <button id="copy" class="primary">Копировать</button>
+        </div>
+        <div class="hint">проверочные слова: <b id="check">—</b></div>
+
+        <div class="actions">
+          <button id="save">Сохранить в индекс</button>
+          <button id="rotate">Сменить пароль</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="list-head">
+          <h2>Аккаунты <span id="count" class="muted"></span></h2>
+          <div>
+            <button id="export" class="link">Экспорт</button>
+            <label class="link file">Импорт<input id="import" type="file" accept=".pmx" hidden></label>
+          </div>
+        </div>
+        <input id="filter" placeholder="Поиск" autocomplete="off" hidden>
+        <ul id="accounts"></ul>
+        <p id="empty" class="muted">Индекс пуст. Сохраняйте сюда сайты с нестандартной версией или политикой: остальные пароли восстановятся и без него.</p>
+      </div>
+    </section>
+
+    <div id="status" role="status" aria-live="polite"></div>
+  </main>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>

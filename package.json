@@ -5,7 +5,9 @@
   "scripts": {
     "build:ext": "sh extension/build.sh",
     "test:ext": "node --test extension/test/core.test.mjs",
-    "test:e2e": "node extension/test/e2e.mjs"
+    "test:e2e": "node extension/test/e2e.mjs",
+    "build:web": "sh web/build.sh",
+    "test:web": "node web/test/e2e.mjs"
   },
   "devDependencies": {
     "playwright": "1.56.1"
