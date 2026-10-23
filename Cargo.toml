@@ -11,6 +11,12 @@ name = "bip39_pm"
 [[bin]]
 name = "pm"
 path = "src/bin/pm.rs"
+required-features = ["cli"]
+
+[features]
+default = ["cli"]
+# Зависимости командной строки; мобильное приложение собирает ядро без них.
+cli = ["dep:clap", "dep:rpassword", "dep:dirs"]
 
 [dependencies]
 bip39 = { version = "2", features = ["rand"] }
@@ -26,7 +32,7 @@ url = "2"
 psl = "=2.1.244"  # PSL заморожен: смена списка может изменить eTLD+1 и пароли
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-clap = { version = "4", features = ["derive", "env"] }
-rpassword = "7"
-dirs = "5"
+clap = { version = "4", features = ["derive", "env"], optional = true }
+rpassword = { version = "7", optional = true }
+dirs = { version = "5", optional = true }
 hex = "0.4"

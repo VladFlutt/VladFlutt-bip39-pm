@@ -79,6 +79,19 @@ impl AppKey {
         Self::from_seed(seed.as_ref())
     }
 
+    /// Восстанавливает ключ, сохранённый через [`AppKey::to_bytes`]. Нужно устройствам,
+    /// которые хранят `k_app`, а не саму seed-фразу.
+    pub fn from_bytes(bytes: &[u8]) -> Result<Self> {
+        let arr: [u8; 32] = bytes.try_into().map_err(|_| {
+            Error::Derivation(format!("ключ должен быть 32 байта, а не {}", bytes.len()))
+        })?;
+        Ok(AppKey(Zeroizing::new(arr)))
+    }
+
+    pub fn to_bytes(&self) -> Zeroizing<[u8; 32]> {
+        Zeroizing::new(*self.0)
+    }
+
     pub fn from_seed(seed: &[u8]) -> Result<Self> {
         let entropy = bip85_entropy(seed, &[BIP85_PURPOSE, PM_APP, 0])?;
         let mut k = Zeroizing::new([0u8; 32]);
