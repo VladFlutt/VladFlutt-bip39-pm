@@ -96,40 +96,68 @@ function lock() {
   kApp = null;
   index = { entries: [] };
   clearTimeout(autolockTimer);
-  for (const id of ["site", "login", "password", "mnemonic", "passphrase", "signin-password", "new-password", "new-password2"])
+  for (const id of ["site", "login", "password", "mnemonic", "passphrase", "signin-password", "new-password", "new-password2", "vault-password", "vault-password2"])
     $(id).value = "";
   $("password").type = "password";
   $("reveal").textContent = "Показать";
   $("session").hidden = true;
+  $("vault-fields").hidden = true;
   $("unlocked").hidden = true;
   $("locked").hidden = false;
   showSignin(true);
 }
 
-function rememberRequest() {
-  if (!$("remember").checked) return null;
-  const login = $("new-login").value.trim();
-  const password = $("new-password").value;
+// Поля «логин, мастер-пароль, повтор» есть в форме seed (new-*) и в открытом
+// приложении (vault-*).
+function vaultRequest(prefix) {
+  const login = $(`${prefix}-login`).value.trim();
+  const password = $(`${prefix}-password`).value;
   if (!login) throw new Error("Укажите логин для входа");
   if ([...password].length < 10) throw new Error("Мастер-пароль должен быть не короче 10 символов");
-  if (password !== $("new-password2").value) throw new Error("Мастер-пароли не совпадают");
+  if (password !== $(`${prefix}-password2`).value) throw new Error("Мастер-пароли не совпадают");
   return { login, password };
 }
 
+async function createVault(k_app, { login, password }) {
+  status("Шифрую вход…");
+  await nextFrame();
+  let sealed;
+  try {
+    sealed = core.sealVault(k_app, login, password);
+  } catch (e) {
+    throw new Error(`Вход не создан: ${e.message}`);
+  }
+  writeVaults({ ...readVaults(), [sealed.login]: sealed.data });
+  if (readVaults()[sealed.login] !== sealed.data) {
+    throw new Error("Вход не создан: браузер не сохранил данные (приватный режим или запрет хранилища?)");
+  }
+  // Просим браузер не вытеснять хранилище сайта; отказ не мешает работе.
+  navigator.storage?.persist?.().catch(() => {});
+  return sealed.login;
+}
+
+function clearVaultFields(prefix) {
+  for (const id of ["login", "password", "password2"]) $(`${prefix}-${id}`).value = "";
+}
+
 const unlock = guarded(async () => {
-  const remember = rememberRequest();
+  const remember = $("remember").checked ? vaultRequest("new") : null;
   const { k_app, fingerprint } = core.unlock($("mnemonic").value, $("passphrase").value);
   openSession(k_app, fingerprint);
   if (remember) {
-    status("Шифрую вход…");
-    await nextFrame();
-    const { data, login } = core.sealVault(k_app, remember.login, remember.password);
-    writeVaults({ ...readVaults(), [login]: data });
+    const login = await createVault(k_app, remember);
     $("remember").checked = false;
     $("remember-fields").hidden = true;
-    for (const id of ["new-login", "new-password", "new-password2"]) $(id).value = "";
+    clearVaultFields("new");
     status(`Вход для «${login}» создан. Отпечаток: ${fingerprint}`, "ok");
   }
+});
+
+const saveVault = guarded(async () => {
+  const login = await createVault(kApp, vaultRequest("vault"));
+  clearVaultFields("vault");
+  $("vault-fields").hidden = true;
+  status(`Вход для «${login}» создан. В следующий раз войдите по логину и паролю.`, "ok");
 });
 
 const signin = guarded(async () => {
@@ -313,6 +341,11 @@ for (const id of ["signin-login", "signin-password"])
   $(id).addEventListener("keydown", (e) => e.key === "Enter" && signin());
 $("use-seed").addEventListener("click", () => (status(""), showSignin(false)));
 $("use-signin").addEventListener("click", () => (status(""), showSignin(true)));
+$("vault-open").addEventListener("click", () => {
+  $("vault-fields").hidden = !$("vault-fields").hidden;
+  if (!$("vault-fields").hidden) $("vault-login").focus();
+});
+$("vault-save").addEventListener("click", saveVault);
 $("remember").addEventListener("change", () => {
   $("remember-fields").hidden = !$("remember").checked;
   if ($("remember").checked) $("new-login").focus();

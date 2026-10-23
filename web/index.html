@@ -114,6 +114,20 @@
         <ul id="accounts"></ul>
         <p id="empty" class="muted">Индекс пуст. Сохраняйте сюда сайты с нестандартной версией или политикой: остальные пароли восстановятся и без него.</p>
       </div>
+
+      <div class="card">
+        <button id="vault-open" class="link">Вход по логину и паролю на этом устройстве</button>
+        <div id="vault-fields" hidden>
+          <label for="vault-login">Логин</label>
+          <input id="vault-login" autocomplete="username" autocapitalize="off" spellcheck="false">
+          <label for="vault-password">Мастер-пароль <span class="muted">(не короче 10 символов)</span></label>
+          <input id="vault-password" type="password" autocomplete="new-password">
+          <label for="vault-password2">Повторите мастер-пароль</label>
+          <input id="vault-password2" type="password" autocomplete="new-password">
+          <p class="hint">После этого на этом устройстве можно входить без seed-фразы. Сохраняется только ключ, зашифрованный мастер-паролем.</p>
+          <button id="vault-save" class="primary wide">Создать вход</button>
+        </div>
+      </div>
     </section>
 
     <div id="status" role="status" aria-live="polite"></div>

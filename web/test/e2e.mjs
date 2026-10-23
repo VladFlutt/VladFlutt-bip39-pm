@@ -121,6 +121,32 @@ try {
   assert.equal(await page.inputValue("#password"), "");
   assert.equal(await page.inputValue("#signin-password"), "");
 
+  // Вход можно создать и в уже открытом приложении (второй логин для той же seed).
+  await page.fill("#signin-login", "vlad");
+  await page.fill("#signin-password", "correct horse battery");
+  await page.click("#signin-submit");
+  await page.waitForSelector("#unlocked:not([hidden])");
+  await page.click("#vault-open");
+  await page.fill("#vault-login", "phone");
+  await page.fill("#vault-password", "another long secret");
+  await page.fill("#vault-password2", "another long secret");
+  await page.click("#vault-save");
+  await page.waitForFunction(() => document.getElementById("status").textContent.includes("Вход для «phone» создан"));
+  assert.ok(await page.locator("#status").isVisible());
+  await page.click("#lock");
+  await page.waitForSelector("#signin:not([hidden])");
+  await page.fill("#signin-login", "phone");
+  await page.fill("#signin-password", "another long secret");
+  await page.click("#signin-submit");
+  await page.waitForSelector("#unlocked:not([hidden])");
+  assert.equal(await page.textContent("#fingerprint"), "era-primary-finish");
+  await page.click("#lock");
+  await page.waitForSelector("#signin:not([hidden])");
+  page.once("dialog", (d) => d.accept());
+  await page.fill("#signin-login", "phone");
+  await page.click("#forget");
+  await page.waitForFunction(() => document.getElementById("status").textContent.includes("Вход удалён"));
+
   // Удаление входа: остаётся только seed-фраза.
   await page.fill("#signin-login", "vlad");
   page.once("dialog", (d) => d.accept());

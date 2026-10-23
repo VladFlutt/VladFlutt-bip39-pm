@@ -66,6 +66,9 @@ li code { display: inline; padding: 1px 4px; margin: 0; }
 #accounts .remove { border: none; background: none; color: var(--muted); padding: 8px; }
 #empty { font-size: 14px; margin: 10px 0 0; }
 #status { min-height: 22px; margin-top: 4px; font-size: 14px; color: var(--muted); text-align: center; }
+/* Сообщение всегда в поле зрения, даже когда форма длиннее экрана телефона. */
+#status:not(:empty) { position: sticky; bottom: 12px; padding: 10px 14px; border: 1px solid var(--line);
+                      border-radius: 10px; background: var(--card); box-shadow: 0 4px 16px rgb(0 0 0 / 0.12); }
 #status.error { color: var(--warn); }
 #status.ok { color: var(--ok); }
 @media (max-width: 420px) {
