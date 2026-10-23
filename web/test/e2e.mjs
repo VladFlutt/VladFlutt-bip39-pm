@@ -10,7 +10,15 @@ import { chromium } from "playwright";
 const root = new URL("../dist/", import.meta.url).pathname;
 const vercel = JSON.parse(readFileSync(new URL("../../vercel.json", import.meta.url)));
 const securityHeaders = vercel.headers.find((h) => h.source === "/(.*)").headers;
-const types = { ".html": "text/html; charset=utf-8", ".js": "text/javascript", ".css": "text/css", ".wasm": "application/wasm" };
+const types = {
+  ".html": "text/html; charset=utf-8",
+  ".js": "text/javascript",
+  ".css": "text/css",
+  ".wasm": "application/wasm",
+  ".svg": "image/svg+xml",
+  ".png": "image/png",
+  ".webmanifest": "application/manifest+json",
+};
 const ABANDON = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
 
 const server = http
@@ -41,15 +49,83 @@ try {
   page.on("request", (r) => !r.url().startsWith(base) && !r.url().startsWith("data:") && external.push(r.url()));
 
   await page.goto(base);
-  await page.waitForSelector("#locked:not([hidden])");
+  await page.waitForSelector("#welcome:not([hidden])");
+  assert.equal(await page.title(), "ManagerBIP — пароли из seed-фразы");
 
-  await page.click("#new-seed");
-  assert.equal((await page.textContent("#generated-words")).split(" ").length, 24);
+  // Учебный режим: демо-фраза, подсказки по шагам, в хранилище ничего не пишется.
+  await page.click("#mode-learn");
+  await page.waitForSelector("#unlocked:not([hidden])");
+  assert.equal(await page.isVisible("#demo-badge"), true);
+  assert.equal(await page.isVisible("#vault-card"), false);
+  assert.equal(await page.textContent("#fingerprint"), "era-primary-finish");
+  assert.match(await page.textContent("#coach-step"), /Шаг 1 из \d+/);
+  assert.equal(await page.getAttribute("#fingerprint", "class"), "spot");
+  const coachSteps = Number((await page.textContent("#coach-step")).match(/из (\d+)/)[1]);
+  await page.click("#coach-next");
+  assert.equal(await page.textContent("#domain"), "github.com");
+  await page.click("#coach-next");
+  assert.equal(await page.inputValue("#login"), "demo@mail.ru");
+  assert.ok((await page.inputValue("#password")).length === 20);
+  await page.click("#coach-back");
+  assert.match(await page.textContent("#coach-step"), /Шаг 2 из/);
+  for (let i = 2; i < coachSteps; i++) await page.click("#coach-next");
+  assert.equal(await page.textContent("#coach-next"), "Начать работу");
+  await page.click("#save");
+  assert.equal(await page.locator("#accounts li").count(), 1);
+  assert.deepEqual(await page.evaluate(() => Object.keys(localStorage)), [], "обучение ничего не сохраняет");
+
+  // «Начать работу» после обучения открывает пошаговую настройку.
+  await page.click("#coach-next");
+  await page.waitForSelector("#wizard:not([hidden])");
+  assert.equal(await page.isVisible("#demo-badge"), false);
+  assert.equal(await page.locator("#words li").count(), 24);
+  assert.equal(await page.isDisabled("#to-verify"), true);
+  const words = await page.locator("#words li").allTextContents();
+  await page.check("#wrote");
+  await page.click("#to-verify");
+  await page.waitForSelector("#step-verify:not([hidden])");
+  const positions = (await page.locator("#verify-fields label").allTextContents()).map((t) => Number(t.match(/\d+/)[0]) - 1);
+  assert.equal(positions.length, 3);
+  await page.fill("#verify-0", "wrong");
+  await page.fill("#verify-1", words[positions[1]]);
+  await page.fill("#verify-2", words[positions[2]]);
+  await page.click("#verify-next");
+  assert.match(await page.textContent("#status"), new RegExp(`№${positions[0] + 1}`));
+  await page.fill("#verify-0", ` ${words[positions[0]].toUpperCase()} `);
+  await page.click("#verify-next");
+  await page.waitForSelector("#step-vault:not([hidden])");
+  assert.equal(await page.locator("#words li").count(), 0, "фраза стёрта со страницы");
+  await page.fill("#wiz-login", "Wizard");
+  await page.fill("#wiz-password", "a long wizard secret");
+  await page.fill("#wiz-password2", "a long wizard secret");
+  await page.click("#wiz-vault-save");
+  await page.waitForSelector("#step-done:not([hidden])");
+  const wizardFingerprint = await page.textContent("#wiz-fingerprint");
+  assert.match(wizardFingerprint, /^[a-z]+-[a-z]+-[a-z]+$/);
+  await page.click("#wiz-finish");
+  await page.waitForSelector("#unlocked:not([hidden])");
+  assert.equal(await page.textContent("#fingerprint"), wizardFingerprint);
+  assert.equal(await page.isVisible("#vault-card"), true);
+  await page.click("#lock");
+  await page.waitForSelector("#signin:not([hidden])");
+  await page.fill("#signin-login", "wizard");
+  await page.fill("#signin-password", "a long wizard secret");
+  await page.click("#signin-submit");
+  await page.waitForSelector("#unlocked:not([hidden])");
+  assert.equal(await page.textContent("#fingerprint"), wizardFingerprint);
+
+  // Дальше — сценарии с известной фразой на чистом устройстве.
+  await page.evaluate(() => localStorage.clear());
+  await page.reload();
+  await page.waitForSelector("#welcome:not([hidden])");
+  await page.click("#have-seed");
+  await page.waitForSelector("#seed:not([hidden])");
 
   await page.fill("#mnemonic", ABANDON);
   await page.click("#unlock");
   await page.waitForSelector("#unlocked:not([hidden])");
   assert.equal(await page.textContent("#fingerprint"), "era-primary-finish");
+  assert.equal(await page.isVisible("#coach"), false);
 
   // Векторы спецификации v1: URL нормализуется до домена.
   await page.fill("#site", "https://www.GitHub.com/login");
@@ -68,6 +144,7 @@ try {
 
   await page.fill("#site", "bank.ru");
   await page.fill("#login", "vlad");
+  await page.click("#settings summary");
   await page.fill("#length", "16");
   await page.uncheck("#symbols");
   assert.equal(await page.inputValue("#password"), "oh1fWuHJh2e3emF0");
@@ -77,6 +154,8 @@ try {
   // Перезагрузка: ключ забыт, индекс восстанавливается после ввода той же seed.
   // Заодно создаём вход по логину и мастер-паролю.
   await page.reload();
+  await page.waitForSelector("#welcome:not([hidden])");
+  await page.click("#have-seed");
   await page.waitForSelector("#seed:not([hidden])");
   assert.equal(await page.isHidden("#signin"), true, "без сохранённых входов форма логина скрыта");
   await page.fill("#mnemonic", ABANDON);

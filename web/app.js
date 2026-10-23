@@ -1,4 +1,4 @@
-// Веб-версия bip39-pm. Всё вычисляется в браузере тем же WASM-ядром, что у
+// ManagerBIP — веб-версия bip39-pm. Всё вычисляется в браузере тем же WASM-ядром, что у
 // CLI и расширения. k_app живёт только в памяти этой вкладки; в localStorage
 // лежат зашифрованный индекс (домены, логины, счётчики, политики) и, если
 // пользователь создал вход по логину, k_app под мастер-паролем (Argon2id).
@@ -13,9 +13,14 @@ const CLIPBOARD_CLEAR_MS = 30_000;
 const $ = (id) => document.getElementById(id);
 const core = await loadCore(new URL("pm_core.wasm", import.meta.url));
 
+// Демо-фраза учебного режима: тестовый вектор BIP39, известный всем.
+const DEMO_MNEMONIC = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
+
 let kApp = null;
 let index = { entries: [] };
 let autolockTimer;
+// Учебный режим: демо-фраза, подсказки, в localStorage ничего не пишется.
+let demo = false;
 
 function status(text, kind = "") {
   $("status").textContent = text;
@@ -44,6 +49,7 @@ function readStoredIndex() {
 }
 
 function persistIndex() {
+  if (demo) return;
   try {
     localStorage.setItem(INDEX_KEY, core.encryptIndex(kApp, index));
   } catch (e) {
@@ -76,12 +82,31 @@ const normLogin = (s) => s.normalize("NFKC").trim().toLowerCase();
 // Argon2id занимает долю секунды и блокирует поток: сначала показываем статус.
 const nextFrame = () => new Promise((r) => requestAnimationFrame(() => setTimeout(r, 0)));
 
+const SCREENS = ["welcome", "wizard", "locked", "unlocked"];
+
+function showScreen(name) {
+  for (const id of SCREENS) $(id).hidden = id !== name;
+  window.scrollTo(0, 0);
+}
+
+const hasVaults = () => Object.keys(readVaults()).length > 0;
+
+// Стартовый экран: при сохранённом входе — форма логина, иначе — выбор режима.
+function showStart() {
+  if (hasVaults()) {
+    showScreen("locked");
+    showSignin(true);
+  } else {
+    showScreen("welcome");
+  }
+}
+
 function showSignin(show) {
-  const hasVaults = Object.keys(readVaults()).length > 0;
-  $("signin").hidden = !(show && hasVaults);
+  const any = hasVaults();
+  $("signin").hidden = !(show && any);
   $("seed").hidden = !$("signin").hidden;
-  $("use-signin").hidden = !hasVaults;
-  (show && hasVaults ? $("signin-login") : $("mnemonic")).focus();
+  $("use-signin").hidden = !any;
+  (show && any ? $("signin-login") : $("mnemonic")).focus();
 }
 
 // --- сессия ---
@@ -95,16 +120,18 @@ function touch() {
 function lock() {
   kApp = null;
   index = { entries: [] };
+  demo = false;
+  endCoach();
+  resetWizard();
   clearTimeout(autolockTimer);
   for (const id of ["site", "login", "password", "mnemonic", "passphrase", "signin-password", "new-password", "new-password2", "vault-password", "vault-password2"])
     $(id).value = "";
   $("password").type = "password";
   $("reveal").textContent = "Показать";
   $("session").hidden = true;
+  $("demo-badge").hidden = true;
   $("vault-fields").hidden = true;
-  $("unlocked").hidden = true;
-  $("locked").hidden = false;
-  showSignin(true);
+  showStart();
 }
 
 // Поля «логин, мастер-пароль, повтор» есть в форме seed (new-*) и в открытом
@@ -172,13 +199,15 @@ const signin = guarded(async () => {
 });
 
 function openSession(k_app, fingerprint) {
-  const stored = readStoredIndex();
+  // Учебный режим не трогает индекс пользователя.
+  const stored = demo ? null : readStoredIndex();
   let loaded = { entries: [] };
   if (stored) {
     try {
       loaded = core.decryptIndex(k_app, stored);
     } catch {
       $("reset-index").hidden = false;
+      showScreen("locked");
       showSignin(false);
       throw new Error("Сохранённый в браузере индекс зашифрован другой seed-фразой или passphrase. Проверьте фразу.");
     }
@@ -187,16 +216,222 @@ function openSession(k_app, fingerprint) {
   index = loaded;
   $("mnemonic").value = "";
   $("passphrase").value = "";
-  $("generated").hidden = true;
   $("reset-index").hidden = true;
   $("fingerprint").textContent = fingerprint;
   $("session").hidden = false;
-  $("locked").hidden = true;
-  $("unlocked").hidden = false;
+  $("demo-badge").hidden = !demo;
+  $("vault-card").hidden = demo;
+  for (const id of ["site", "login"]) $(id).value = "";
+  applyEntry(null);
+  compute();
+  showScreen("unlocked");
   renderAccounts();
   touch();
-  $("site").focus();
+  if (!demo) $("site").focus();
   status(`Открыто. Сверьте отпечаток: ${fingerprint}`, "ok");
+}
+
+// --- пошаговая настройка ---
+
+const WIZ_STEPS = ["seed", "verify", "vault", "done"];
+let wiz = {};
+
+function resetWizard() {
+  wiz = {};
+  $("words").replaceChildren();
+  $("verify-fields").replaceChildren();
+  $("wrote").checked = false;
+  $("to-verify").disabled = true;
+  for (const id of ["wiz-mnemonic", "wiz-passphrase", "wiz-login", "wiz-password", "wiz-password2"]) $(id).value = "";
+}
+
+function wizStep(name) {
+  const at = WIZ_STEPS.indexOf(name);
+  for (const step of WIZ_STEPS) $(`step-${step}`).hidden = step !== name;
+  for (const li of document.querySelectorAll(".steps li")) {
+    const i = WIZ_STEPS.indexOf(li.dataset.step);
+    li.classList.toggle("done", i < at);
+    li.classList.toggle("current", i === at);
+  }
+  // Для существующей фразы проверка записи не нужна.
+  document.querySelector('.steps li[data-step="verify"]').hidden = wiz.existing === true;
+  wiz.step = name;
+  window.scrollTo(0, 0);
+}
+
+function wizSeedTab(existing) {
+  wiz.existing = existing;
+  $("seed-new").setAttribute("aria-selected", String(!existing));
+  $("seed-existing").setAttribute("aria-selected", String(existing));
+  $("seed-new-pane").hidden = existing;
+  $("seed-existing-pane").hidden = !existing;
+  if (!existing && !wiz.words) {
+    wiz.words = core.generate(24).split(" ");
+    $("words").replaceChildren(
+      ...wiz.words.map((w) => Object.assign(document.createElement("li"), { textContent: w })),
+    );
+  }
+  wizStep("seed");
+  if (existing) $("wiz-mnemonic").focus();
+}
+
+function startWizard() {
+  resetWizard();
+  status("");
+  showScreen("wizard");
+  wizSeedTab(false);
+}
+
+// Три случайных разных позиции для проверки записи.
+function pickPositions(n, count) {
+  const picked = new Set();
+  while (picked.size < count) picked.add(crypto.getRandomValues(new Uint32Array(1))[0] % n);
+  return [...picked].sort((a, b) => a - b);
+}
+
+function toVerify() {
+  wiz.positions = pickPositions(wiz.words.length, 3);
+  $("verify-fields").replaceChildren(
+    ...wiz.positions.flatMap((pos, i) => {
+      const label = Object.assign(document.createElement("label"), { textContent: `Слово №${pos + 1}` });
+      label.htmlFor = `verify-${i}`;
+      const input = Object.assign(document.createElement("input"), {
+        id: `verify-${i}`,
+        autocomplete: "off",
+        autocapitalize: "off",
+        spellcheck: false,
+      });
+      input.addEventListener("keydown", (e) => e.key === "Enter" && verifyWords());
+      return [label, input];
+    }),
+  );
+  wizStep("verify");
+  $("verify-0").focus();
+}
+
+const verifyWords = guarded(async () => {
+  const wrong = wiz.positions.filter((pos, i) => $(`verify-${i}`).value.trim().toLowerCase() !== wiz.words[pos]);
+  if (wrong.length) {
+    throw new Error(`Не совпадает слово №${wrong.map((p) => p + 1).join(", №")}. Сверьтесь с записью.`);
+  }
+  deriveWizardKey(wiz.words.join(" "), "");
+});
+
+const existingNext = guarded(async () => {
+  deriveWizardKey($("wiz-mnemonic").value, $("wiz-passphrase").value);
+});
+
+function deriveWizardKey(mnemonic, passphrase) {
+  const { k_app, fingerprint } = core.unlock(mnemonic, passphrase);
+  wiz.kApp = k_app;
+  wiz.fingerprint = fingerprint;
+  // Фраза больше не нужна: дальше работаем только с ключом.
+  wiz.words = null;
+  $("words").replaceChildren();
+  $("wiz-mnemonic").value = "";
+  $("wiz-passphrase").value = "";
+  wizStep("vault");
+  $("wiz-login").focus();
+}
+
+const wizVaultSave = guarded(async () => {
+  const login = await createVault(wiz.kApp, vaultRequest("wiz"));
+  clearVaultFields("wiz");
+  wizDone(`Вход для «${login}» создан.`);
+});
+
+function wizDone(message) {
+  $("wiz-fingerprint").textContent = wiz.fingerprint;
+  wizStep("done");
+  status(message ?? "", "ok");
+}
+
+const wizFinish = guarded(async () => {
+  const { kApp: k, fingerprint } = wiz;
+  resetWizard();
+  openSession(k, fingerprint);
+});
+
+// --- учебный режим ---
+
+const COACH = [
+  {
+    target: "fingerprint",
+    text: "Вы вошли с демо-фразой. Вверху отпечаток фразы: три слова. При каждом входе сверяйте их: другие слова значат, что фраза введена с ошибкой.",
+  },
+  {
+    target: "site",
+    text: "Введите адрес сайта, для которого нужен пароль. Подойдёт и полная ссылка: ManagerBIP сам выделит домен. Для примера мы подставили github.com.",
+    fill: { site: "https://github.com/login" },
+  },
+  {
+    target: "login",
+    text: "Теперь логин на этом сайте. У разных логинов на одном сайте будут разные пароли.",
+    fill: { login: "demo@mail.ru" },
+  },
+  {
+    target: "password-box",
+    text: "Пароль готов. Он не хранится нигде: его каждый раз заново вычисляют фраза, сайт и логин. Нажмите «Показать» или «Копировать», чтобы вставить его на сайте.",
+  },
+  {
+    target: "check",
+    text: "Проверочные слова пароля. Если на другом устройстве они те же, то и пароль тот же.",
+  },
+  {
+    target: "settings",
+    text: "Если сайт требует пароль короче или без спецсимволов, поменяйте настройки здесь. Нестандартные настройки сохраните в индекс, чтобы не вспоминать их.",
+    open: "settings",
+  },
+  {
+    target: "rotate",
+    text: "Если пароль утёк, нажмите «Сменить пароль»: версия увеличится на 1 и пароль станет новым. Версия запомнится в индексе.",
+  },
+  {
+    target: "accounts-card",
+    text: "Индекс — зашифрованный список сайтов с нестандартными настройками. Паролей в нём нет. В учебном режиме он не сохраняется.",
+  },
+  {
+    target: null,
+    text: "Обучение пройдено! Теперь можно создать свою seed-фразу и начать пользоваться ManagerBIP по-настоящему.",
+    final: true,
+  },
+];
+let coachAt = 0;
+
+function startDemo() {
+  demo = true;
+  status("");
+  const { k_app, fingerprint } = core.unlock(DEMO_MNEMONIC);
+  openSession(k_app, fingerprint);
+  coachAt = 0;
+  $("coach").hidden = false;
+  renderCoach();
+}
+
+function endCoach() {
+  $("coach").hidden = true;
+  document.querySelector(".spot")?.classList.remove("spot");
+}
+
+function renderCoach() {
+  const step = COACH[coachAt];
+  document.querySelector(".spot")?.classList.remove("spot");
+  for (const [id, value] of Object.entries(step.fill ?? {})) {
+    if (!$(id).value) {
+      $(id).value = value;
+      onIdentityInput();
+    }
+  }
+  if (step.open) $(step.open).open = true;
+  $("coach-step").textContent = `Шаг ${coachAt + 1} из ${COACH.length}`;
+  $("coach-text").textContent = step.text;
+  $("coach-back").hidden = coachAt === 0;
+  $("coach-next").textContent = step.final ? "Начать работу" : "Далее";
+  if (step.target) {
+    const el = $(step.target);
+    el.classList.add("spot");
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+  }
 }
 
 // --- форма ---
@@ -364,15 +599,58 @@ $("forget").addEventListener(
     status("Вход удалён", "ok");
   }),
 );
-$("lock").addEventListener("click", () => (lock(), status("Заблокировано")));
+$("lock").addEventListener("click", () => {
+  const wasDemo = demo;
+  lock();
+  status(wasDemo ? "Обучение завершено" : "Заблокировано");
+});
 
-$("new-seed").addEventListener(
+$("mode-learn").addEventListener("click", guarded(async () => startDemo()));
+$("to-learn").addEventListener("click", guarded(async () => startDemo()));
+$("mode-start").addEventListener("click", guarded(async () => startWizard()));
+$("have-seed").addEventListener("click", () => {
+  status("");
+  showScreen("locked");
+  showSignin(false);
+});
+$("to-welcome").addEventListener("click", () => (status(""), showScreen("welcome")));
+
+$("seed-new").addEventListener("click", guarded(async () => wizSeedTab(false)));
+$("seed-existing").addEventListener("click", guarded(async () => wizSeedTab(true)));
+$("wrote").addEventListener("change", () => ($("to-verify").disabled = !$("wrote").checked));
+$("to-verify").addEventListener("click", guarded(async () => toVerify()));
+$("verify-next").addEventListener("click", verifyWords);
+$("verify-back").addEventListener("click", () => (status(""), wizStep("seed")));
+$("existing-next").addEventListener("click", existingNext);
+$("wiz-vault-save").addEventListener("click", wizVaultSave);
+for (const id of ["wiz-login", "wiz-password", "wiz-password2"])
+  $(id).addEventListener("keydown", (e) => e.key === "Enter" && wizVaultSave());
+$("wiz-vault-skip").addEventListener("click", () => wizDone());
+$("wiz-finish").addEventListener("click", wizFinish);
+$("wiz-cancel").addEventListener("click", () => {
+  if (wiz.words && !confirm("Отменить настройку? Показанная фраза будет забыта.")) return;
+  resetWizard();
+  status("");
+  showStart();
+});
+
+$("coach-next").addEventListener(
   "click",
   guarded(async () => {
-    $("generated-words").textContent = core.generate(24);
-    $("generated").hidden = false;
+    if (COACH[coachAt].final) {
+      lock();
+      startWizard();
+      return;
+    }
+    coachAt += 1;
+    renderCoach();
   }),
 );
+$("coach-back").addEventListener("click", () => {
+  coachAt = Math.max(0, coachAt - 1);
+  renderCoach();
+});
+$("coach-exit").addEventListener("click", () => (lock(), status("Обучение завершено")));
 
 $("reset-index").addEventListener(
   "click",
