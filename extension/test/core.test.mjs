@@ -70,3 +70,15 @@ test("память WASM не растёт при многократных выз
   const after = core.memoryBytes?.() ?? 0;
   assert.ok(after - before <= 64 * 1024, `рост ${after - before} байт`);
 });
+
+test("вход по логину: k_app под мастер-паролем", () => {
+  const { k_app: k } = core.unlock(ABANDON);
+  const { data, login } = core.sealVault(k, " Vlad ", "correct horse battery");
+  assert.equal(login, "vlad");
+  assert.ok(data.startsWith("504d565401")); // "PMVT" + версия 1
+  assert.equal(core.sealVault(k, "vlad", "correct horse battery").data === data, false, "соль и nonce случайны");
+  assert.deepEqual(core.openVault(data, "VLAD", "correct horse battery"), { k_app: k, fingerprint: "era-primary-finish" });
+  assert.throws(() => core.openVault(data, "vlad", "correct horse batterY"), /Неверный логин или пароль/);
+  assert.throws(() => core.openVault(data, "other", "correct horse battery"), /Неверный логин или пароль/);
+  assert.throws(() => core.sealVault(k, "vlad", "short"), /короче 10/);
+});

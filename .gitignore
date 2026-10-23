@@ -3,3 +3,5 @@
 *.tmp
 extension/pm_core.wasm
 node_modules/
+web/dist/
+.vercel/

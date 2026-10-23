@@ -6,7 +6,7 @@
 //! `{"ok": ...}` или `{"error": "..."}`.
 
 use bip39_pm::index::NONCE_LEN;
-use bip39_pm::{normalize, AppKey, Index, Policy, Site};
+use bip39_pm::{normalize, vault, AppKey, Index, Policy, Site};
 use serde::Deserialize;
 use serde_json::{json, Value};
 use zeroize::Zeroizing;
@@ -80,6 +80,19 @@ enum Request {
         k_app: Zeroizing<String>,
         data: String,
     },
+    /// Вход по логину и мастер-паролю: шифрует k_app (Argon2id + XChaCha20).
+    VaultSeal {
+        k_app: Zeroizing<String>,
+        login: String,
+        password: Zeroizing<String>,
+        salt: String,
+        nonce: String,
+    },
+    VaultOpen {
+        data: String,
+        login: String,
+        password: Zeroizing<String>,
+    },
 }
 
 fn handle(input: &[u8]) -> Result<Value, String> {
@@ -138,6 +151,39 @@ fn handle(input: &[u8]) -> Result<Value, String> {
             let index = Index::decrypt(&from_hex(&data)?, &app_key(&k_app)?.index_key())
                 .map_err(|e| e.to_string())?;
             json!({ "index": index })
+        }
+        Request::VaultSeal {
+            k_app,
+            login,
+            password,
+            salt,
+            nonce,
+        } => {
+            let salt: [u8; vault::SALT_LEN] = from_hex(&salt)?
+                .try_into()
+                .map_err(|_| "salt: нужно 16 байт")?;
+            let nonce: [u8; vault::NONCE_LEN] = from_hex(&nonce)?
+                .try_into()
+                .map_err(|_| "nonce: нужно 24 байта")?;
+            let data = vault::seal(
+                &app_key(&k_app)?,
+                &login,
+                &password,
+                vault::KdfParams::default(),
+                &salt,
+                &nonce,
+            )
+            .map_err(|e| e.to_string())?;
+            json!({ "data": to_hex(&data), "login": normalize::login(&login) })
+        }
+        Request::VaultOpen {
+            data,
+            login,
+            password,
+        } => {
+            let key =
+                vault::open(&from_hex(&data)?, &login, &password).map_err(|e| e.to_string())?;
+            json!({ "k_app": to_hex(&key.to_bytes()), "fingerprint": key.fingerprint() })
         }
     })
 }

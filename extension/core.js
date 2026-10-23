@@ -42,6 +42,17 @@ export async function loadCore(source) {
       call({ op: "index_encrypt", k_app: kApp, index, nonce: toHex(crypto.getRandomValues(new Uint8Array(24))) })
         .data,
     decryptIndex: (kApp, data) => call({ op: "index_decrypt", k_app: kApp, data }).index,
+    // Argon2id (64 МиБ, 3 прохода): около секунды, вызывать не в обработчике ввода.
+    sealVault: (kApp, login, password) =>
+      call({
+        op: "vault_seal",
+        k_app: kApp,
+        login,
+        password,
+        salt: toHex(crypto.getRandomValues(new Uint8Array(16))),
+        nonce: toHex(crypto.getRandomValues(new Uint8Array(24))),
+      }),
+    openVault: (data, login, password) => call({ op: "vault_open", data, login, password }),
   };
 }
 
