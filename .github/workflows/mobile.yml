@@ -45,6 +45,8 @@ jobs:
   android:
     runs-on: ubuntu-latest
     needs: flutter
+    permissions:
+      contents: write
     defaults:
       run:
         working-directory: mobile
@@ -64,6 +66,17 @@ jobs:
         with:
           name: managerbip-debug-apk
           path: mobile/build/app/outputs/flutter-apk/app-debug.apk
+      # Постоянная ссылка на свежий отладочный APK: пререлиз android-debug.
+      - name: Publish debug APK
+        if: github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp build/app/outputs/flutter-apk/app-debug.apk ManagerBIP-debug.apk
+          gh release view android-debug >/dev/null 2>&1 || gh release create android-debug \
+            --prerelease --target "$GITHUB_SHA" --title "ManagerBIP (debug APK)" \
+            --notes "Отладочная сборка для проверки на Android. Не для повседневного использования."
+          gh release upload android-debug ManagerBIP-debug.apk --clobber
 
   ios:
     runs-on: macos-latest
