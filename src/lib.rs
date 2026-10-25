@@ -6,12 +6,19 @@
 
 pub mod derive;
 pub mod index;
+pub mod license;
 pub mod normalize;
 pub mod policy;
+pub mod secret;
+pub mod transfer;
+pub mod vault;
+pub mod wrap;
 
 pub use derive::{AppKey, Site};
 pub use index::{Entry, Index};
+pub use license::{Edition, License};
 pub use policy::Policy;
+pub use secret::{Secret, SecretKind};
 
 #[derive(Debug)]
 pub enum Error {
@@ -20,6 +27,8 @@ pub enum Error {
     Domain(String),
     Policy(String),
     Index(String),
+    License(String),
+    Vault(String),
 }
 
 impl std::fmt::Display for Error {
@@ -30,10 +39,19 @@ impl std::fmt::Display for Error {
             Error::Domain(m) => write!(f, "некорректный домен: {m}"),
             Error::Policy(m) => write!(f, "некорректная политика: {m}"),
             Error::Index(m) => write!(f, "ошибка индекса: {m}"),
+            Error::License(m) => write!(f, "ключ Pro: {m}"),
+            Error::Vault(m) => write!(f, "{m}"),
         }
     }
 }
 
 impl std::error::Error for Error {}
+
+/// Допустимая длина seed-фразы BIP39: 128–256 бит энтропии с шагом 32.
+pub const SEED_WORD_COUNTS: [usize; 5] = [12, 15, 18, 21, 24];
+
+/// Длина новой фразы: 12 слов (128 бит) или 24 слова (256 бит). Восстановить можно любую
+/// из [`SEED_WORD_COUNTS`].
+pub const NEW_SEED_WORD_COUNTS: [usize; 2] = [12, 24];
 
 pub type Result<T> = std::result::Result<T, Error>;

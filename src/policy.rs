@@ -125,6 +125,13 @@ impl ByteStream {
         Ok(b)
     }
 
+    /// Равномерное число в `0..2048` (индекс слова BIP39): младшие 11 бит из двух байт.
+    pub fn bits11(&mut self) -> Result<usize> {
+        let hi = self.next()? as usize;
+        let lo = self.next()? as usize;
+        Ok(((hi << 8) | lo) & 0x7ff)
+    }
+
     /// Равномерное число в `0..n`, `1 <= n <= 256`.
     pub fn uniform(&mut self, n: usize) -> Result<usize> {
         assert!((1..=256).contains(&n));

@@ -6,6 +6,7 @@
 """
 import hashlib
 import hmac
+import os
 import struct
 import sys
 import unicodedata
@@ -50,21 +51,23 @@ def canonical(length, l, u, d, s):
     return "len=%d;cls=%s" % (length, "".join(c for on, c in zip((l, u, d, s), "luds") if on))
 
 
-def password(k_app, domain, login, counter, length=20, l=True, u=True, d=True, s=True):
-    info = b"bip39-pm/v1/password"
-    for f in (domain.encode(), login.encode(), canonical(length, l, u, d, s).encode()):
-        info += struct.pack(">I", len(f)) + f
-    info += struct.pack(">I", counter)
-    k_site = hkdf(k_app, info, 32)
-    stream = iter(hkdf_expand(k_site, b"bip39-pm/v1/stream", 1024))
+class Stream:
+    def __init__(self, key):
+        self.it = iter(hkdf_expand(key, b"bip39-pm/v1/stream", 1024))
 
-    def uniform(n):
+    def uniform(self, n):
         limit = 256 - 256 % n
         while True:
-            b = next(stream)
+            b = next(self.it)
             if b < limit:
                 return b % n
 
+    def bits11(self):
+        return ((next(self.it) << 8) | next(self.it)) & 0x7FF
+
+
+def encode(stream, length, l, u, d, s):
+    uniform = stream.uniform
     classes = [c for on, c in zip((l, u, d, s), (LOWER, UPPER, DIGITS, SYMBOLS)) if on]
     union = "".join(classes)
     out = [c[uniform(len(c))] for c in classes]
@@ -74,6 +77,29 @@ def password(k_app, domain, login, counter, length=20, l=True, u=True, d=True, s
         j = uniform(i + 1)
         out[i], out[j] = out[j], out[i]
     return "".join(out)
+
+
+def password(k_app, domain, login, counter, length=20, l=True, u=True, d=True, s=True):
+    info = b"bip39-pm/v1/password"
+    for f in (domain.encode(), login.encode(), canonical(length, l, u, d, s).encode()):
+        info += struct.pack(">I", len(f)) + f
+    info += struct.pack(">I", counter)
+    return encode(Stream(hkdf(k_app, info, 32)), length, l, u, d, s)
+
+
+def secret(k_app, kind, size, label, counter, wordlist):
+    """SPEC.md, раздел 10. Метка уже нормализована (NFKC, пробелы, нижний регистр)."""
+    canon = {"pin": "pin;len=%d", "words": "words;n=%d", "wifi": "wifi;len=%d"}[kind] % size
+    info = b"bip39-pm/v1/secret"
+    for f in (canon.encode(), label.encode()):
+        info += struct.pack(">I", len(f)) + f
+    info += struct.pack(">I", counter)
+    st = Stream(hkdf(k_app, info, 32))
+    if kind == "pin":
+        return "".join(DIGITS[st.uniform(10)] for _ in range(size))
+    if kind == "words":
+        return " ".join(wordlist[st.bits11()] for _ in range(size))
+    return encode(st, size, True, True, True, False)
 
 
 if __name__ == "__main__":
@@ -88,6 +114,19 @@ if __name__ == "__main__":
     ok = True
     for args, kw, want in vectors:
         got = password(k, *args, **kw)
+        print("OK " if got == want else "FAIL", args, got)
+        ok &= got == want
+    # Официальный английский словарь BIP39 (sha256 2f5eed53…dbda).
+    with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "bip39-english.txt")) as f:
+        wordlist = f.read().split()
+    secrets = [
+        (("pin", 4, "карта", 1), "5987"),
+        (("pin", 6, "карта сбер", 1), "936802"),
+        (("wifi", 20, "home wifi", 1), "1w2hnpKJyh93chs4N61a"),
+        (("words", 4, "secret question", 1), "rice trade budget staff"),
+    ]
+    for args, want in secrets:
+        got = secret(k, *args, wordlist)
         print("OK " if got == want else "FAIL", args, got)
         ok &= got == want
     sys.exit(0 if ok else 1)

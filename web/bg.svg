@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="360" height="360" viewBox="0 0 360 360" fill="none" stroke="#7b8494" stroke-opacity=".16" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <!-- Обои: контуры знаков криптовалют (рисованные, без брендовых файлов). -->
+  <!-- Bitcoin -->
+  <g transform="translate(52 56) rotate(-12)">
+    <circle r="30"/>
+    <path d="M-9-15h11a7.5 7.5 0 0 1 0 15h-11zM-9 0h13a7.5 7.5 0 0 1 0 15h-13zM-9-15v30M-4-20v5M3-20v5M-4 15v5M3 15v5"/>
+  </g>
+  <!-- Ethereum -->
+  <g transform="translate(172 44) rotate(8)">
+    <path d="M0-32 20 0 0 11-20 0zM0 15 20 4 0 32-20 4zM0-32v43M-20 0h40"/>
+  </g>
+  <!-- Solana -->
+  <g transform="translate(292 70) rotate(-6)">
+    <path d="M-18-16h30l6-6h-30zM-18 3h30l6-6h-30zM-12 16h30l-6 6h-30z"/>
+  </g>
+  <!-- Tether -->
+  <g transform="translate(100 168) rotate(10)">
+    <circle r="28"/>
+    <path d="M-14-12h28M0-12v27"/>
+    <ellipse cy="-1" rx="15" ry="4.5"/>
+  </g>
+  <!-- Litecoin -->
+  <g transform="translate(232 170) rotate(-10)">
+    <circle r="28"/>
+    <path d="M-3-17-8 13h19M-13 3l15-6"/>
+  </g>
+  <!-- TON -->
+  <g transform="translate(332 196) rotate(12)">
+    <path d="M-17-13h34L0 17zM0-13v30"/>
+  </g>
+  <!-- Dogecoin -->
+  <g transform="translate(40 286) rotate(6)">
+    <circle r="28"/>
+    <path d="M-7-14h7a14 14 0 0 1 0 28h-7zM-13 0h12"/>
+  </g>
+  <!-- Monero -->
+  <g transform="translate(164 292) rotate(-8)">
+    <circle r="28"/>
+    <path d="M-15 9v-19L0 5l15-15V9M-27 9h12M15 9h12"/>
+  </g>
+  <!-- Cardano -->
+  <g transform="translate(284 300) rotate(4)">
+    <circle r="5"/>
+    <circle cx="0" cy="-17" r="3"/><circle cx="15" cy="-8" r="3"/><circle cx="15" cy="8" r="3"/>
+    <circle cx="0" cy="17" r="3"/><circle cx="-15" cy="8" r="3"/><circle cx="-15" cy="-8" r="3"/>
+    <circle cx="0" cy="-28" r="1.6"/><circle cx="24" cy="-14" r="1.6"/><circle cx="24" cy="14" r="1.6"/>
+    <circle cx="0" cy="28" r="1.6"/><circle cx="-24" cy="14" r="1.6"/><circle cx="-24" cy="-14" r="1.6"/>
+  </g>
+</svg>

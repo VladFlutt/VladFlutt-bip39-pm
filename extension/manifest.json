@@ -1,0 +1,13 @@
+{
+  "manifest_version": 3,
+  "name": "bip39-pm",
+  "version": "0.1.0",
+  "description": "Детерминированные пароли из BIP39 seed: без сервера и без хранилища паролей.",
+  "minimum_chrome_version": "103",
+  "permissions": ["storage", "activeTab", "scripting", "alarms"],
+  "background": { "service_worker": "background.js", "type": "module" },
+  "action": { "default_popup": "popup.html", "default_title": "bip39-pm" },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'"
+  }
+}
