@@ -5,7 +5,8 @@
 //! все пароли, но не ключи криптокошелька на той же фразе.
 
 use anyhow::{bail, Result};
-use bip39_pm::{AppKey, Entry, Index, Policy, Site};
+use bip39_pm::index::{SecretEntry, Template};
+use bip39_pm::{transfer, wrap, AppKey, Entry, Index, Policy, SecretKind, Site};
 use flutter_rust_bridge::frb;
 
 /// Политика пароля (SPEC.md, раздел 4).
@@ -87,6 +88,179 @@ impl From<Account> for Entry {
             note: a.note,
         }
     }
+}
+
+/// Вид секрета из фразы.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum SecretType {
+    Pin,
+    Words,
+    Wifi,
+    Ssh,
+}
+
+/// Секрет без значения: вид, размер (длина или число слов, для SSH 0), метка, версия.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct SecretItem {
+    pub kind: SecretType,
+    pub size: u8,
+    pub label: String,
+    pub counter: u32,
+    pub note: Option<String>,
+}
+
+impl SecretItem {
+    fn spec(kind: SecretType, size: u8) -> SecretKind {
+        match kind {
+            SecretType::Pin => SecretKind::Pin { length: size },
+            SecretType::Words => SecretKind::Words { count: size },
+            SecretType::Wifi => SecretKind::Wifi { length: size },
+            SecretType::Ssh => SecretKind::Ssh,
+        }
+    }
+}
+
+impl From<SecretEntry> for SecretItem {
+    fn from(e: SecretEntry) -> Self {
+        let (kind, size) = match e.kind {
+            SecretKind::Pin { length } => (SecretType::Pin, length),
+            SecretKind::Words { count } => (SecretType::Words, count),
+            SecretKind::Wifi { length } => (SecretType::Wifi, length),
+            SecretKind::Ssh => (SecretType::Ssh, 0),
+        };
+        SecretItem {
+            kind,
+            size,
+            label: e.label,
+            counter: e.counter,
+            note: e.note,
+        }
+    }
+}
+
+impl From<SecretItem> for SecretEntry {
+    fn from(s: SecretItem) -> Self {
+        SecretEntry {
+            kind: SecretItem::spec(s.kind, s.size),
+            label: s.label,
+            counter: s.counter,
+            note: s.note,
+        }
+    }
+}
+
+/// Размер секрета: `[минимум, максимум, по умолчанию]`; у SSH размера нет.
+#[frb(sync)]
+pub fn secret_size_bounds(kind: SecretType) -> Vec<u8> {
+    match kind {
+        SecretType::Pin => vec![4, 12, 4],
+        SecretType::Words => vec![3, 8, 4],
+        SecretType::Wifi => vec![12, 63, 20],
+        SecretType::Ssh => vec![0, 0, 0],
+    }
+}
+
+/// Метка секрета так, как она входит в деривацию.
+#[frb(sync)]
+pub fn normalize_label(input: String) -> String {
+    bip39_pm::normalize::login(&input)
+}
+
+/// Значение секрета. Для SSH `value` — закрытый ключ OpenSSH, `public` — открытый.
+#[derive(Clone, Debug)]
+pub struct SecretValue {
+    pub label: String,
+    pub value: String,
+    pub public: Option<String>,
+}
+
+/// Именованное правило пароля.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct RuleTemplate {
+    pub name: String,
+    pub policy: PasswordPolicy,
+}
+
+/// Всё содержимое индекса профиля.
+#[derive(Clone, Debug, PartialEq, Eq, Default)]
+pub struct IndexData {
+    pub accounts: Vec<Account>,
+    pub secrets: Vec<SecretItem>,
+    pub templates: Vec<RuleTemplate>,
+    pub default_policy: Option<PasswordPolicy>,
+}
+
+impl From<Index> for IndexData {
+    fn from(i: Index) -> Self {
+        IndexData {
+            accounts: i.entries.into_iter().map(Account::from).collect(),
+            secrets: i.secrets.into_iter().map(SecretItem::from).collect(),
+            templates: i
+                .templates
+                .into_iter()
+                .map(|t| RuleTemplate {
+                    name: t.name,
+                    policy: t.policy.into(),
+                })
+                .collect(),
+            default_policy: i.default_policy.map(PasswordPolicy::from),
+        }
+    }
+}
+
+impl From<IndexData> for Index {
+    fn from(d: IndexData) -> Self {
+        let mut index = Index {
+            secrets: d.secrets.into_iter().map(SecretEntry::from).collect(),
+            templates: d
+                .templates
+                .into_iter()
+                .map(|t| Template {
+                    name: t.name,
+                    policy: t.policy.into(),
+                })
+                .collect(),
+            default_policy: d.default_policy.map(Policy::from),
+            ..Index::default()
+        };
+        for a in d.accounts {
+            index.upsert(a.into());
+        }
+        index
+    }
+}
+
+/// Итог слияния: новый индекс и сколько записей добавлено, обновлено, осталось как было.
+#[derive(Clone, Debug)]
+pub struct MergeResult {
+    pub data: IndexData,
+    pub added: u32,
+    pub updated: u32,
+    pub kept: u32,
+}
+
+/// Влить пришедший индекс в свой: побеждает больший счётчик, при равенстве — свой.
+#[frb(sync)]
+pub fn merge_index(local: IndexData, incoming: IndexData) -> MergeResult {
+    let mut index = Index::from(local);
+    let r = index.merge(incoming.into());
+    MergeResult {
+        data: index.into(),
+        added: r.added,
+        updated: r.updated,
+        kept: r.kept,
+    }
+}
+
+/// Закрыть ключ профиля кодом (PBKDF2, доли секунды — вызов асинхронный).
+pub fn wrap_secret(secret: Vec<u8>, code: String) -> Result<Vec<u8>> {
+    let secret = zeroize::Zeroizing::new(secret);
+    Ok(wrap::wrap(&secret, &code)?)
+}
+
+/// Открыть ключ профиля кодом. Ошибка — неверный код.
+pub fn unwrap_secret(blob: Vec<u8>, code: String) -> Result<Vec<u8>> {
+    Ok(wrap::unwrap(&blob, &code)?.to_vec())
 }
 
 /// Вычисленный пароль и нормализованные параметры, под которыми он получен.
@@ -196,20 +370,44 @@ impl Vault {
         })
     }
 
-    /// Аккаунты → зашифрованный файл индекса (формат `PMIX`, совместим с CLI).
+    /// Индекс → зашифрованный файл (формат `PMIX`, совместим с CLI).
     #[frb(sync)]
-    pub fn encrypt_index(&self, accounts: Vec<Account>) -> Result<Vec<u8>> {
-        let mut index = Index::default();
-        for a in accounts {
-            index.upsert(a.into());
-        }
-        Ok(index.encrypt(&self.key.index_key())?)
+    pub fn encrypt_index(&self, data: IndexData) -> Result<Vec<u8>> {
+        Ok(Index::from(data).encrypt(&self.key.index_key())?)
     }
 
     #[frb(sync)]
-    pub fn decrypt_index(&self, data: Vec<u8>) -> Result<Vec<Account>> {
-        let index = Index::decrypt(&data, &self.key.index_key())?;
-        Ok(index.entries.into_iter().map(Account::from).collect())
+    pub fn decrypt_index(&self, data: Vec<u8>) -> Result<IndexData> {
+        Ok(Index::decrypt(&data, &self.key.index_key())?.into())
+    }
+
+    /// Индекс → код переноса `PMX1:…` (открывается только той же фразой).
+    #[frb(sync)]
+    pub fn export_text(&self, data: IndexData) -> Result<String> {
+        Ok(transfer::export_text(&data.into(), &self.key)?)
+    }
+
+    #[frb(sync)]
+    pub fn import_text(&self, text: String) -> Result<IndexData> {
+        Ok(transfer::import_text(&text, &self.key)?.into())
+    }
+
+    #[frb(sync)]
+    pub fn derive_secret(
+        &self,
+        kind: SecretType,
+        size: u8,
+        label: String,
+        counter: u32,
+    ) -> Result<SecretValue> {
+        let s = self
+            .key
+            .secret(&SecretItem::spec(kind, size), &label, counter)?;
+        Ok(SecretValue {
+            label: bip39_pm::normalize::login(&label),
+            value: s.value.as_str().to_owned(),
+            public: s.public,
+        })
     }
 }
 
@@ -255,8 +453,28 @@ mod tests {
             policy: PasswordPolicy::default_policy(),
             note: Some("work".into()),
         };
-        let blob = v.encrypt_index(vec![acc.clone()]).unwrap();
-        assert_eq!(restored.decrypt_index(blob).unwrap(), vec![acc]);
+        let data = IndexData {
+            accounts: vec![acc],
+            secrets: vec![SecretItem {
+                kind: SecretType::Pin,
+                size: 4,
+                label: "карта".into(),
+                counter: 1,
+                note: None,
+            }],
+            templates: vec![RuleTemplate {
+                name: "Банк".into(),
+                policy: PasswordPolicy::default_policy(),
+            }],
+            default_policy: Some(PasswordPolicy::default_policy()),
+        };
+        let blob = v.encrypt_index(data.clone()).unwrap();
+        assert_eq!(restored.decrypt_index(blob).unwrap(), data);
+        let code = v.export_text(data.clone()).unwrap();
+        assert_eq!(restored.import_text(code).unwrap(), data);
+        let m = merge_index(IndexData::default(), data.clone());
+        assert_eq!((m.added, m.updated, m.kept), (3, 0, 0));
+        assert_eq!(m.data, data);
         assert!(Vault::from_key(vec![0; 31]).is_err());
     }
 
@@ -270,5 +488,29 @@ mod tests {
         assert!(generate_mnemonic(13).is_err());
         assert!(generate_mnemonic(27).is_err());
         assert_eq!(bip39_wordlist().len(), 2048);
+    }
+
+    #[test]
+    fn secrets_through_api() {
+        let v = Vault::unlock(ABANDON.into(), String::new()).unwrap();
+        let pin = v
+            .derive_secret(SecretType::Pin, 4, " Карта ".into(), 1)
+            .unwrap();
+        assert_eq!((pin.label.as_str(), pin.value.as_str()), ("карта", "5987"));
+        let ssh = v
+            .derive_secret(SecretType::Ssh, 0, "github laptop".into(), 1)
+            .unwrap();
+        assert!(ssh.public.unwrap().starts_with("ssh-ed25519 "));
+        for k in [SecretType::Pin, SecretType::Words, SecretType::Wifi] {
+            let b = secret_size_bounds(k);
+            assert!(v.derive_secret(k, b[2], "x".into(), 1).is_ok());
+            assert!(v.derive_secret(k, b[1] + 1, "x".into(), 1).is_err());
+        }
+        let blob = wrap_secret(v.key_bytes(), "7777".into()).unwrap();
+        assert_eq!(
+            unwrap_secret(blob.clone(), "7777".into()).unwrap(),
+            v.key_bytes()
+        );
+        assert!(unwrap_secret(blob, "7778".into()).is_err());
     }
 }

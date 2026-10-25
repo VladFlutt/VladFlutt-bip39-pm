@@ -20,16 +20,30 @@ class ManagerBipApp extends StatefulWidget {
 
 class _ManagerBipAppState extends State<ManagerBipApp>
     with WidgetsBindingObserver {
+  final _navigator = GlobalKey<NavigatorState>();
+  Phase _phase = Phase.chooseMode;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    widget.state.addListener(_onState);
   }
 
   @override
   void dispose() {
+    widget.state.removeListener(_onState);
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
+  }
+
+  /// Блокировка закрывает все открытые поверх списка экраны: без ключа им нечего показывать.
+  void _onState() {
+    final phase = widget.state.phase;
+    if (_phase == Phase.unlocked && phase != Phase.unlocked) {
+      _navigator.currentState?.popUntil((r) => r.isFirst);
+    }
+    _phase = phase;
   }
 
   /// Ушли в фон — ключ выгружается из памяти, вернуться можно только через биометрию.
@@ -54,6 +68,7 @@ class _ManagerBipAppState extends State<ManagerBipApp>
     return AppScope(
       state: widget.state,
       child: MaterialApp(
+        navigatorKey: _navigator,
         title: 'ManagerBIP',
         debugShowCheckedModeBanner: false,
         theme: _theme(Brightness.light),

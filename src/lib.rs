@@ -9,11 +9,15 @@ pub mod index;
 pub mod license;
 pub mod normalize;
 pub mod policy;
+pub mod secret;
+pub mod transfer;
+pub mod wrap;
 
 pub use derive::{AppKey, Site};
 pub use index::{Entry, Index};
 pub use license::{Edition, License};
 pub use policy::Policy;
+pub use secret::{Secret, SecretKind};
 
 #[derive(Debug)]
 pub enum Error {

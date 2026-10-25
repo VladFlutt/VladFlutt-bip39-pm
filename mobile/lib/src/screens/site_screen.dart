@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import '../rust/api/pm.dart';
 import '../state/app_scope.dart';
 import '../ui/hint.dart';
+import '../ui/policy_editor.dart';
 import '../ui/wallpaper.dart';
 
 /// Через сколько стирать скопированный пароль из буфера обмена.
@@ -26,7 +27,7 @@ class _SiteScreenState extends State<SiteScreen> {
   late final _login = TextEditingController(text: widget.account?.login);
   late int _counter = widget.account?.counter ?? 1;
   late PasswordPolicy _policy =
-      widget.account?.policy ?? PasswordPolicy.defaultPolicy();
+      widget.account?.policy ?? AppScope.of(context).newSitePolicy;
   bool _show = false;
   Timer? _clipboardTimer;
 
@@ -216,7 +217,7 @@ class _SiteScreenState extends State<SiteScreen> {
                     'Два проверочных слова помогают сверить пароль на разных устройствах, не показывая его. '
                     'Версия растёт, когда вы меняете пароль на сайте.',
               ),
-              _PolicyEditor(
+              PolicyEditor(
                 policy: _policy,
                 onChanged: (p) => setState(() => _policy = p),
               ),
@@ -248,84 +249,6 @@ class _SiteScreenState extends State<SiteScreen> {
             ],
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _PolicyEditor extends StatelessWidget {
-  final PasswordPolicy policy;
-  final ValueChanged<PasswordPolicy> onChanged;
-
-  const _PolicyEditor({required this.policy, required this.onChanged});
-
-  PasswordPolicy _with({
-    int? length,
-    bool? lower,
-    bool? upper,
-    bool? digits,
-    bool? symbols,
-  }) => PasswordPolicy(
-    length: length ?? policy.length,
-    lower: lower ?? policy.lower,
-    upper: upper ?? policy.upper,
-    digits: digits ?? policy.digits,
-    symbols: symbols ?? policy.symbols,
-  );
-
-  @override
-  Widget build(BuildContext context) {
-    final enabled = [
-      policy.lower,
-      policy.upper,
-      policy.digits,
-      policy.symbols,
-    ].where((v) => v).length;
-    // Последний включённый класс выключить нельзя: нужен хотя бы один.
-    ValueChanged<bool>? guard(bool on, PasswordPolicy Function(bool) f) =>
-        on && enabled == 1 ? null : (v) => onChanged(f(v));
-    return Card(
-      child: ExpansionTile(
-        title: const Text('Правила пароля'),
-        subtitle: Text(policy.canonical()),
-        children: [
-          ListTile(
-            title: Text('Длина: ${policy.length}'),
-            subtitle: Slider(
-              min: 8,
-              max: 64,
-              divisions: 56,
-              value: policy.length.toDouble(),
-              onChanged: (v) => onChanged(_with(length: v.round())),
-            ),
-          ),
-          SwitchListTile(
-            title: const Text('Строчные a–z'),
-            value: policy.lower,
-            onChanged: guard(policy.lower, (v) => _with(lower: v)),
-          ),
-          SwitchListTile(
-            title: const Text('Заглавные A–Z'),
-            value: policy.upper,
-            onChanged: guard(policy.upper, (v) => _with(upper: v)),
-          ),
-          SwitchListTile(
-            title: const Text('Цифры 0–9'),
-            value: policy.digits,
-            onChanged: guard(policy.digits, (v) => _with(digits: v)),
-          ),
-          SwitchListTile(
-            title: const Text('Символы !#\$%…'),
-            value: policy.symbols,
-            onChanged: guard(policy.symbols, (v) => _with(symbols: v)),
-          ),
-          const Padding(
-            padding: EdgeInsets.fromLTRB(16, 0, 16, 12),
-            child: Hint(
-              short: 'Меняйте правила, только если сайт не принимает пароль. Они сохраняются в списке.',
-            ),
-          ),
-        ],
       ),
     );
   }

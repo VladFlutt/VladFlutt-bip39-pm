@@ -9,15 +9,16 @@ import '../ui/wallpaper.dart';
 
 /// Возможности Pro. `ready: false` — появится в обновлении, ключ уже подойдёт.
 const _features = [
-  (Icons.layers_outlined, 'Несколько seed-фраз и профилей', false),
-  (Icons.tune, 'Свои правила паролей по умолчанию и шаблоны', false),
+  (Icons.sync_alt, 'Перенос списка сайтов по QR и резервная копия', true),
   (
-    Icons.qr_code_2,
-    'Зашифрованный экспорт и перенос списка сайтов по QR',
-    false,
+    Icons.key_outlined,
+    'PIN-коды, кодовые слова, пароли Wi‑Fi и ключи SSH из той же фразы',
+    true,
   ),
+  (Icons.people_outline, 'Несколько профилей и скрытый профиль', true),
+  (Icons.tune, 'Шаблоны правил и правило для новых сайтов', true),
   (Icons.password, 'Автозаполнение паролей в приложениях и браузере', false),
-  (Icons.palette_outlined, 'Темы и обои', false),
+  (Icons.verified_user_outlined, 'Коды двухфакторной защиты (2FA)', false),
 ];
 
 /// Экран Pro: что даёт, где купить ключ, ввод ключа.
@@ -92,6 +93,10 @@ class _ProScreenState extends State<ProScreen> {
                 ),
               ),
             ),
+            if (pro == null && state.learning)
+              const Hint(
+                short: 'В учебном режиме все функции Pro открыты: попробуйте их на тестовой фразе.',
+              ),
             const SizedBox(height: 8),
             Text('Что даёт Pro', style: text.titleMedium),
             for (final (icon, title, ready) in _features)

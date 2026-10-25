@@ -38,6 +38,9 @@ pm fingerprint                      # отпечаток seed: сверка по
 pm get github.com vlad@mail.ru      # пароль для сайта
 pm get bank.ru vlad --length 16 --no-symbols --save   # нестандартная политика → в индекс
 pm rotate github.com vlad@mail.ru   # сменить пароль (счётчик + 1)
+pm secret pin "карта сбер" --size 6  # PIN, кодовые слова (words), пароль Wi‑Fi (wifi), ключ SSH (ssh)
+pm export > backup.txt              # код переноса PMX1:… для другого устройства
+pm import < backup.txt              # влить код в свой индекс
 pm list                             # аккаунты из индекса
 ```
 

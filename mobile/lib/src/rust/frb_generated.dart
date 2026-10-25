@@ -70,7 +70,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.13.0';
 
   @override
-  int get rustContentHash => -269137201;
+  int get rustContentHash => 360376865;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -82,7 +82,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
 }
 
 abstract class RustLibApi extends BaseApi {
-  List<Account> crateApiPmVaultDecryptIndex({
+  IndexData crateApiPmVaultDecryptIndex({
     required Vault that,
     required List<int> data,
   });
@@ -95,14 +95,32 @@ abstract class RustLibApi extends BaseApi {
     required PasswordPolicy policy,
   });
 
+  SecretValue crateApiPmVaultDeriveSecret({
+    required Vault that,
+    required SecretType kind,
+    required int size,
+    required String label,
+    required int counter,
+  });
+
   Uint8List crateApiPmVaultEncryptIndex({
     required Vault that,
-    required List<Account> accounts,
+    required IndexData data,
+  });
+
+  String crateApiPmVaultExportText({
+    required Vault that,
+    required IndexData data,
   });
 
   String crateApiPmVaultFingerprint({required Vault that});
 
   Vault crateApiPmVaultFromKey({required List<int> key});
+
+  IndexData crateApiPmVaultImportText({
+    required Vault that,
+    required String text,
+  });
 
   Uint8List crateApiPmVaultKeyBytes({required Vault that});
 
@@ -115,9 +133,18 @@ abstract class RustLibApi extends BaseApi {
 
   String crateApiPmGenerateMnemonic({required int words});
 
+  Future<IndexData> crateApiPmIndexDataDefault();
+
   Future<void> crateApiPmInitApp();
 
+  MergeResult crateApiPmMergeIndex({
+    required IndexData local,
+    required IndexData incoming,
+  });
+
   String crateApiPmNormalizeDomain({required String input});
+
+  String crateApiPmNormalizeLabel({required String input});
 
   String crateApiPmNormalizeLogin({required String input});
 
@@ -125,9 +152,21 @@ abstract class RustLibApi extends BaseApi {
 
   PasswordPolicy crateApiPmPasswordPolicyDefaultPolicy();
 
+  Uint8List crateApiPmSecretSizeBounds({required SecretType kind});
+
   Uint32List crateApiPmSeedWordCounts();
 
+  Future<Uint8List> crateApiPmUnwrapSecret({
+    required List<int> blob,
+    required String code,
+  });
+
   ProLicense crateApiLicenseVerifyProKey({required String key});
+
+  Future<Uint8List> crateApiPmWrapSecret({
+    required List<int> secret,
+    required String code,
+  });
 
   RustArcIncrementStrongCountFnType get rust_arc_increment_strong_count_Vault;
 
@@ -145,7 +184,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   });
 
   @override
-  List<Account> crateApiPmVaultDecryptIndex({
+  IndexData crateApiPmVaultDecryptIndex({
     required Vault that,
     required List<int> data,
   }) {
@@ -161,7 +200,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 1)!;
         },
         codec: SseCodec(
-          decodeSuccessData: sse_decode_list_account,
+          decodeSuccessData: sse_decode_index_data,
           decodeErrorData: sse_decode_AnyhowException,
         ),
         constMeta: kCrateApiPmVaultDecryptIndexConstMeta,
@@ -216,9 +255,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   );
 
   @override
-  Uint8List crateApiPmVaultEncryptIndex({
+  SecretValue crateApiPmVaultDeriveSecret({
     required Vault that,
-    required List<Account> accounts,
+    required SecretType kind,
+    required int size,
+    required String label,
+    required int counter,
   }) {
     return handler.executeSync(
       SyncTask(
@@ -228,15 +270,51 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
             that,
             serializer,
           );
-          sse_encode_list_account(accounts, serializer);
+          sse_encode_secret_type(kind, serializer);
+          sse_encode_u_8(size, serializer);
+          sse_encode_String(label, serializer);
+          sse_encode_u_32(counter, serializer);
           return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 3)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_secret_value,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiPmVaultDeriveSecretConstMeta,
+        argValues: [that, kind, size, label, counter],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiPmVaultDeriveSecretConstMeta =>
+      const TaskConstMeta(
+        debugName: "Vault_derive_secret",
+        argNames: ["that", "kind", "size", "label", "counter"],
+      );
+
+  @override
+  Uint8List crateApiPmVaultEncryptIndex({
+    required Vault that,
+    required IndexData data,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVault(
+            that,
+            serializer,
+          );
+          sse_encode_box_autoadd_index_data(data, serializer);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 4)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_list_prim_u_8_strict,
           decodeErrorData: sse_decode_AnyhowException,
         ),
         constMeta: kCrateApiPmVaultEncryptIndexConstMeta,
-        argValues: [that, accounts],
+        argValues: [that, data],
         apiImpl: this,
       ),
     );
@@ -245,8 +323,40 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   TaskConstMeta get kCrateApiPmVaultEncryptIndexConstMeta =>
       const TaskConstMeta(
         debugName: "Vault_encrypt_index",
-        argNames: ["that", "accounts"],
+        argNames: ["that", "data"],
       );
+
+  @override
+  String crateApiPmVaultExportText({
+    required Vault that,
+    required IndexData data,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVault(
+            that,
+            serializer,
+          );
+          sse_encode_box_autoadd_index_data(data, serializer);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 5)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_String,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiPmVaultExportTextConstMeta,
+        argValues: [that, data],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiPmVaultExportTextConstMeta => const TaskConstMeta(
+    debugName: "Vault_export_text",
+    argNames: ["that", "data"],
+  );
 
   @override
   String crateApiPmVaultFingerprint({required Vault that}) {
@@ -258,7 +368,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
             that,
             serializer,
           );
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 4)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 6)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_String,
@@ -281,7 +391,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: () {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_list_prim_u_8_loose(key, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 5)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 7)!;
         },
         codec: SseCodec(
           decodeSuccessData:
@@ -299,6 +409,38 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       const TaskConstMeta(debugName: "Vault_from_key", argNames: ["key"]);
 
   @override
+  IndexData crateApiPmVaultImportText({
+    required Vault that,
+    required String text,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVault(
+            that,
+            serializer,
+          );
+          sse_encode_String(text, serializer);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 8)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_index_data,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiPmVaultImportTextConstMeta,
+        argValues: [that, text],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiPmVaultImportTextConstMeta => const TaskConstMeta(
+    debugName: "Vault_import_text",
+    argNames: ["that", "text"],
+  );
+
+  @override
   Uint8List crateApiPmVaultKeyBytes({required Vault that}) {
     return handler.executeSync(
       SyncTask(
@@ -308,7 +450,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
             that,
             serializer,
           );
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 6)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 9)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_list_prim_u_8_strict,
@@ -338,7 +480,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 7,
+            funcId: 10,
             port: port_,
           );
         },
@@ -365,7 +507,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       SyncTask(
         callFfi: () {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 8)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 11)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_list_String,
@@ -388,7 +530,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: () {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_u_32(words, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 9)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 12)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_String,
@@ -405,6 +547,33 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       const TaskConstMeta(debugName: "generate_mnemonic", argNames: ["words"]);
 
   @override
+  Future<IndexData> crateApiPmIndexDataDefault() {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 13,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_index_data,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiPmIndexDataDefaultConstMeta,
+        argValues: [],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiPmIndexDataDefaultConstMeta =>
+      const TaskConstMeta(debugName: "index_data_default", argNames: []);
+
+  @override
   Future<void> crateApiPmInitApp() {
     return handler.executeNormal(
       NormalTask(
@@ -413,7 +582,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 10,
+            funcId: 14,
             port: port_,
           );
         },
@@ -432,13 +601,42 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       const TaskConstMeta(debugName: "init_app", argNames: []);
 
   @override
+  MergeResult crateApiPmMergeIndex({
+    required IndexData local,
+    required IndexData incoming,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_box_autoadd_index_data(local, serializer);
+          sse_encode_box_autoadd_index_data(incoming, serializer);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 15)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_merge_result,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiPmMergeIndexConstMeta,
+        argValues: [local, incoming],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiPmMergeIndexConstMeta => const TaskConstMeta(
+    debugName: "merge_index",
+    argNames: ["local", "incoming"],
+  );
+
+  @override
   String crateApiPmNormalizeDomain({required String input}) {
     return handler.executeSync(
       SyncTask(
         callFfi: () {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(input, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 11)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 16)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_String,
@@ -455,13 +653,36 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       const TaskConstMeta(debugName: "normalize_domain", argNames: ["input"]);
 
   @override
+  String crateApiPmNormalizeLabel({required String input}) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(input, serializer);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 17)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_String,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiPmNormalizeLabelConstMeta,
+        argValues: [input],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiPmNormalizeLabelConstMeta =>
+      const TaskConstMeta(debugName: "normalize_label", argNames: ["input"]);
+
+  @override
   String crateApiPmNormalizeLogin({required String input}) {
     return handler.executeSync(
       SyncTask(
         callFfi: () {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(input, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 12)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 18)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_String,
@@ -484,7 +705,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: () {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_box_autoadd_password_policy(that, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 13)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 19)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_String,
@@ -509,7 +730,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       SyncTask(
         callFfi: () {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 14)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 20)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_password_policy,
@@ -529,12 +750,35 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
+  Uint8List crateApiPmSecretSizeBounds({required SecretType kind}) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_secret_type(kind, serializer);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 21)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_list_prim_u_8_strict,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiPmSecretSizeBoundsConstMeta,
+        argValues: [kind],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiPmSecretSizeBoundsConstMeta =>
+      const TaskConstMeta(debugName: "secret_size_bounds", argNames: ["kind"]);
+
+  @override
   Uint32List crateApiPmSeedWordCounts() {
     return handler.executeSync(
       SyncTask(
         callFfi: () {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 15)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 22)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_list_prim_u_32_strict,
@@ -551,13 +795,47 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       const TaskConstMeta(debugName: "seed_word_counts", argNames: []);
 
   @override
+  Future<Uint8List> crateApiPmUnwrapSecret({
+    required List<int> blob,
+    required String code,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_list_prim_u_8_loose(blob, serializer);
+          sse_encode_String(code, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 23,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_list_prim_u_8_strict,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiPmUnwrapSecretConstMeta,
+        argValues: [blob, code],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiPmUnwrapSecretConstMeta => const TaskConstMeta(
+    debugName: "unwrap_secret",
+    argNames: ["blob", "code"],
+  );
+
+  @override
   ProLicense crateApiLicenseVerifyProKey({required String key}) {
     return handler.executeSync(
       SyncTask(
         callFfi: () {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(key, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 16)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 24)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_pro_license,
@@ -572,6 +850,40 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
 
   TaskConstMeta get kCrateApiLicenseVerifyProKeyConstMeta =>
       const TaskConstMeta(debugName: "verify_pro_key", argNames: ["key"]);
+
+  @override
+  Future<Uint8List> crateApiPmWrapSecret({
+    required List<int> secret,
+    required String code,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_list_prim_u_8_loose(secret, serializer);
+          sse_encode_String(code, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 25,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_list_prim_u_8_strict,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiPmWrapSecretConstMeta,
+        argValues: [secret, code],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiPmWrapSecretConstMeta => const TaskConstMeta(
+    debugName: "wrap_secret",
+    argNames: ["secret", "code"],
+  );
 
   RustArcIncrementStrongCountFnType
   get rust_arc_increment_strong_count_Vault => wire
@@ -642,6 +954,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  IndexData dco_decode_box_autoadd_index_data(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dco_decode_index_data(raw);
+  }
+
+  @protected
   PasswordPolicy dco_decode_box_autoadd_password_policy(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return dco_decode_password_policy(raw);
@@ -659,6 +977,26 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       counter: dco_decode_u_32(arr[2]),
       password: dco_decode_String(arr[3]),
       checkWords: dco_decode_String(arr[4]),
+    );
+  }
+
+  @protected
+  int dco_decode_i_32(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw as int;
+  }
+
+  @protected
+  IndexData dco_decode_index_data(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 4)
+      throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
+    return IndexData(
+      accounts: dco_decode_list_account(arr[0]),
+      secrets: dco_decode_list_secret_item(arr[1]),
+      templates: dco_decode_list_rule_template(arr[2]),
+      defaultPolicy: dco_decode_opt_box_autoadd_password_policy(arr[3]),
     );
   }
 
@@ -693,9 +1031,41 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  List<RuleTemplate> dco_decode_list_rule_template(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>).map(dco_decode_rule_template).toList();
+  }
+
+  @protected
+  List<SecretItem> dco_decode_list_secret_item(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>).map(dco_decode_secret_item).toList();
+  }
+
+  @protected
+  MergeResult dco_decode_merge_result(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 4)
+      throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
+    return MergeResult(
+      data: dco_decode_index_data(arr[0]),
+      added: dco_decode_u_32(arr[1]),
+      updated: dco_decode_u_32(arr[2]),
+      kept: dco_decode_u_32(arr[3]),
+    );
+  }
+
+  @protected
   String? dco_decode_opt_String(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw == null ? null : dco_decode_String(raw);
+  }
+
+  @protected
+  PasswordPolicy? dco_decode_opt_box_autoadd_password_policy(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw == null ? null : dco_decode_box_autoadd_password_policy(raw);
   }
 
   @protected
@@ -722,6 +1092,52 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     return ProLicense(
       serial: dco_decode_u_32(arr[0]),
       issued: dco_decode_String(arr[1]),
+    );
+  }
+
+  @protected
+  RuleTemplate dco_decode_rule_template(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 2)
+      throw Exception('unexpected arr length: expect 2 but see ${arr.length}');
+    return RuleTemplate(
+      name: dco_decode_String(arr[0]),
+      policy: dco_decode_password_policy(arr[1]),
+    );
+  }
+
+  @protected
+  SecretItem dco_decode_secret_item(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 5)
+      throw Exception('unexpected arr length: expect 5 but see ${arr.length}');
+    return SecretItem(
+      kind: dco_decode_secret_type(arr[0]),
+      size: dco_decode_u_8(arr[1]),
+      label: dco_decode_String(arr[2]),
+      counter: dco_decode_u_32(arr[3]),
+      note: dco_decode_opt_String(arr[4]),
+    );
+  }
+
+  @protected
+  SecretType dco_decode_secret_type(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return SecretType.values[raw as int];
+  }
+
+  @protected
+  SecretValue dco_decode_secret_value(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 3)
+      throw Exception('unexpected arr length: expect 3 but see ${arr.length}');
+    return SecretValue(
+      label: dco_decode_String(arr[0]),
+      value: dco_decode_String(arr[1]),
+      public: dco_decode_opt_String(arr[2]),
     );
   }
 
@@ -823,6 +1239,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  IndexData sse_decode_box_autoadd_index_data(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_index_data(deserializer));
+  }
+
+  @protected
   PasswordPolicy sse_decode_box_autoadd_password_policy(
     SseDeserializer deserializer,
   ) {
@@ -844,6 +1266,29 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       counter: var_counter,
       password: var_password,
       checkWords: var_checkWords,
+    );
+  }
+
+  @protected
+  int sse_decode_i_32(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return deserializer.buffer.getInt32();
+  }
+
+  @protected
+  IndexData sse_decode_index_data(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_accounts = sse_decode_list_account(deserializer);
+    var var_secrets = sse_decode_list_secret_item(deserializer);
+    var var_templates = sse_decode_list_rule_template(deserializer);
+    var var_defaultPolicy = sse_decode_opt_box_autoadd_password_policy(
+      deserializer,
+    );
+    return IndexData(
+      accounts: var_accounts,
+      secrets: var_secrets,
+      templates: var_templates,
+      defaultPolicy: var_defaultPolicy,
     );
   }
 
@@ -893,11 +1338,65 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  List<RuleTemplate> sse_decode_list_rule_template(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <RuleTemplate>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_rule_template(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
+  List<SecretItem> sse_decode_list_secret_item(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <SecretItem>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_secret_item(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
+  MergeResult sse_decode_merge_result(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_data = sse_decode_index_data(deserializer);
+    var var_added = sse_decode_u_32(deserializer);
+    var var_updated = sse_decode_u_32(deserializer);
+    var var_kept = sse_decode_u_32(deserializer);
+    return MergeResult(
+      data: var_data,
+      added: var_added,
+      updated: var_updated,
+      kept: var_kept,
+    );
+  }
+
+  @protected
   String? sse_decode_opt_String(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
 
     if (sse_decode_bool(deserializer)) {
       return (sse_decode_String(deserializer));
+    } else {
+      return null;
+    }
+  }
+
+  @protected
+  PasswordPolicy? sse_decode_opt_box_autoadd_password_policy(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    if (sse_decode_bool(deserializer)) {
+      return (sse_decode_box_autoadd_password_policy(deserializer));
     } else {
       return null;
     }
@@ -929,6 +1428,47 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  RuleTemplate sse_decode_rule_template(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_name = sse_decode_String(deserializer);
+    var var_policy = sse_decode_password_policy(deserializer);
+    return RuleTemplate(name: var_name, policy: var_policy);
+  }
+
+  @protected
+  SecretItem sse_decode_secret_item(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_kind = sse_decode_secret_type(deserializer);
+    var var_size = sse_decode_u_8(deserializer);
+    var var_label = sse_decode_String(deserializer);
+    var var_counter = sse_decode_u_32(deserializer);
+    var var_note = sse_decode_opt_String(deserializer);
+    return SecretItem(
+      kind: var_kind,
+      size: var_size,
+      label: var_label,
+      counter: var_counter,
+      note: var_note,
+    );
+  }
+
+  @protected
+  SecretType sse_decode_secret_type(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var inner = sse_decode_i_32(deserializer);
+    return SecretType.values[inner];
+  }
+
+  @protected
+  SecretValue sse_decode_secret_value(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_label = sse_decode_String(deserializer);
+    var var_value = sse_decode_String(deserializer);
+    var var_public = sse_decode_opt_String(deserializer);
+    return SecretValue(label: var_label, value: var_value, public: var_public);
+  }
+
+  @protected
   int sse_decode_u_32(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return deserializer.buffer.getUint32();
@@ -949,12 +1489,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   BigInt sse_decode_usize(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return deserializer.buffer.getBigUint64();
-  }
-
-  @protected
-  int sse_decode_i_32(SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    return deserializer.buffer.getInt32();
   }
 
   @protected
@@ -1028,6 +1562,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_box_autoadd_index_data(
+    IndexData self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_index_data(self, serializer);
+  }
+
+  @protected
   void sse_encode_box_autoadd_password_policy(
     PasswordPolicy self,
     SseSerializer serializer,
@@ -1044,6 +1587,21 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_u_32(self.counter, serializer);
     sse_encode_String(self.password, serializer);
     sse_encode_String(self.checkWords, serializer);
+  }
+
+  @protected
+  void sse_encode_i_32(int self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    serializer.buffer.putInt32(self);
+  }
+
+  @protected
+  void sse_encode_index_data(IndexData self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_list_account(self.accounts, serializer);
+    sse_encode_list_secret_item(self.secrets, serializer);
+    sse_encode_list_rule_template(self.templates, serializer);
+    sse_encode_opt_box_autoadd_password_policy(self.defaultPolicy, serializer);
   }
 
   @protected
@@ -1097,12 +1655,58 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_list_rule_template(
+    List<RuleTemplate> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_rule_template(item, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_list_secret_item(
+    List<SecretItem> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_secret_item(item, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_merge_result(MergeResult self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_index_data(self.data, serializer);
+    sse_encode_u_32(self.added, serializer);
+    sse_encode_u_32(self.updated, serializer);
+    sse_encode_u_32(self.kept, serializer);
+  }
+
+  @protected
   void sse_encode_opt_String(String? self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
 
     sse_encode_bool(self != null, serializer);
     if (self != null) {
       sse_encode_String(self, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_opt_box_autoadd_password_policy(
+    PasswordPolicy? self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    sse_encode_bool(self != null, serializer);
+    if (self != null) {
+      sse_encode_box_autoadd_password_policy(self, serializer);
     }
   }
 
@@ -1127,6 +1731,37 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_rule_template(RuleTemplate self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.name, serializer);
+    sse_encode_password_policy(self.policy, serializer);
+  }
+
+  @protected
+  void sse_encode_secret_item(SecretItem self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_secret_type(self.kind, serializer);
+    sse_encode_u_8(self.size, serializer);
+    sse_encode_String(self.label, serializer);
+    sse_encode_u_32(self.counter, serializer);
+    sse_encode_opt_String(self.note, serializer);
+  }
+
+  @protected
+  void sse_encode_secret_type(SecretType self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.index, serializer);
+  }
+
+  @protected
+  void sse_encode_secret_value(SecretValue self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.label, serializer);
+    sse_encode_String(self.value, serializer);
+    sse_encode_opt_String(self.public, serializer);
+  }
+
+  @protected
   void sse_encode_u_32(int self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     serializer.buffer.putUint32(self);
@@ -1147,12 +1782,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   void sse_encode_usize(BigInt self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     serializer.buffer.putBigUint64(self);
-  }
-
-  @protected
-  void sse_encode_i_32(int self, SseSerializer serializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    serializer.buffer.putInt32(self);
   }
 }
 
@@ -1175,7 +1804,7 @@ class VaultImpl extends RustOpaque implements Vault {
         RustLib.instance.api.rust_arc_decrement_strong_count_VaultPtr,
   );
 
-  List<Account> decryptIndex({required List<int> data}) =>
+  IndexData decryptIndex({required List<int> data}) =>
       RustLib.instance.api.crateApiPmVaultDecryptIndex(that: this, data: data);
 
   Derived derive({
@@ -1191,15 +1820,33 @@ class VaultImpl extends RustOpaque implements Vault {
     policy: policy,
   );
 
-  /// Аккаунты → зашифрованный файл индекса (формат `PMIX`, совместим с CLI).
-  Uint8List encryptIndex({required List<Account> accounts}) => RustLib
-      .instance
-      .api
-      .crateApiPmVaultEncryptIndex(that: this, accounts: accounts);
+  SecretValue deriveSecret({
+    required SecretType kind,
+    required int size,
+    required String label,
+    required int counter,
+  }) => RustLib.instance.api.crateApiPmVaultDeriveSecret(
+    that: this,
+    kind: kind,
+    size: size,
+    label: label,
+    counter: counter,
+  );
+
+  /// Индекс → зашифрованный файл (формат `PMIX`, совместим с CLI).
+  Uint8List encryptIndex({required IndexData data}) =>
+      RustLib.instance.api.crateApiPmVaultEncryptIndex(that: this, data: data);
+
+  /// Индекс → код переноса `PMX1:…` (открывается только той же фразой).
+  String exportText({required IndexData data}) =>
+      RustLib.instance.api.crateApiPmVaultExportText(that: this, data: data);
 
   /// Три слова — отпечаток seed + passphrase.
   String fingerprint() =>
       RustLib.instance.api.crateApiPmVaultFingerprint(that: this);
+
+  IndexData importText({required String text}) =>
+      RustLib.instance.api.crateApiPmVaultImportText(that: this, text: text);
 
   Uint8List keyBytes() =>
       RustLib.instance.api.crateApiPmVaultKeyBytes(that: this);

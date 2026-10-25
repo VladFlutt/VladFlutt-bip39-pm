@@ -3,7 +3,11 @@ import 'package:flutter/material.dart';
 import '../state/app_scope.dart';
 import '../ui/hint.dart';
 import '../ui/wallpaper.dart';
+import '../ui/pro_gate.dart';
+import 'default_policy_screen.dart';
+import 'profiles_screen.dart';
 import 'pro_screen.dart';
+import 'transfer_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -35,6 +39,10 @@ class SettingsScreen extends StatelessWidget {
     }
   }
 
+  void _push(BuildContext context, Widget screen) =>
+      Navigator.of(context)
+          .push(MaterialPageRoute<void>(builder: (_) => screen));
+
   @override
   Widget build(BuildContext context) {
     final state = AppScope.of(context);
@@ -59,10 +67,43 @@ class SettingsScreen extends StatelessWidget {
                 state.isPro ? 'Активирован' : 'Ввести или купить ключ',
               ),
               trailing: const Icon(Icons.chevron_right),
-              onTap: () => Navigator.of(context).push(
-                MaterialPageRoute<void>(builder: (_) => const ProScreen()),
-              ),
+              onTap: () => _push(context, const ProScreen()),
             ),
+            ListTile(
+              key: const Key('open-profiles'),
+              leading: const Icon(Icons.people_outline),
+              title: const Text('Профили'),
+              subtitle: Text('Открыт: ${state.profile.name}'),
+              trailing: const ProBadge(),
+              onTap: () => _push(context, const ProfilesScreen()),
+            ),
+            ListTile(
+              key: const Key('open-transfer'),
+              leading: const Icon(Icons.sync_alt),
+              title: const Text('Перенос и резервная копия'),
+              subtitle: const Text('QR или код для другого телефона'),
+              trailing: const ProBadge(),
+              onTap: () async {
+                if (await requirePro(context, 'Перенос и резервная копия') &&
+                    context.mounted) {
+                  _push(context, const TransferScreen());
+                }
+              },
+            ),
+            ListTile(
+              key: const Key('open-default-policy'),
+              leading: const Icon(Icons.tune),
+              title: const Text('Правило для новых сайтов'),
+              subtitle: Text(state.newSitePolicy.canonical()),
+              trailing: const ProBadge(),
+              onTap: () async {
+                if (await requirePro(context, 'Правило по умолчанию') &&
+                    context.mounted) {
+                  _push(context, const DefaultPolicyScreen());
+                }
+              },
+            ),
+            const Divider(),
             ListTile(
               leading: const Icon(Icons.fingerprint),
               title: const Text('Отпечаток seed'),

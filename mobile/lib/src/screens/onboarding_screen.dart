@@ -22,7 +22,10 @@ enum _Step {
 
 /// Пошаговая настройка: новая фраза или восстановление, passphrase, отпечаток, защита.
 class OnboardingScreen extends StatefulWidget {
-  const OnboardingScreen({super.key});
+  /// Задан — экран добавляет профиль: без приветствия и шага защиты, результат уходит сюда.
+  final Future<void> Function(Vault)? onProfile;
+
+  const OnboardingScreen({super.key, this.onProfile});
 
   @override
   State<OnboardingScreen> createState() => _OnboardingScreenState();
@@ -50,8 +53,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     return t.isEmpty ? 0 : t.split(RegExp(r'\s+')).length;
   }
 
+  bool get _adding => widget.onProfile != null;
+
   List<_Step> get _steps => [
-    _Step.welcome,
+    if (!_adding) _Step.welcome,
     _Step.choose,
     if (_path == _Path.create) ...[
       _Step.showPhrase,
@@ -60,8 +65,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       _Step.enterPhrase,
     _Step.passphrase,
     _Step.fingerprint,
-    _Step.protect,
+    if (!_adding) _Step.protect,
   ];
+
+  bool get _last => _index == _steps.length - 1;
 
   _Step get _step => _steps[_index];
 
@@ -121,8 +128,13 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       }
       setState(() => _busy = false);
     }
-    if (_step == _Step.protect) {
-      await state.completeOnboarding(_vault!);
+    if (_last) {
+      if (_adding) {
+        await widget.onProfile!(_vault!);
+        if (mounted) Navigator.of(context).pop();
+      } else {
+        await state.completeOnboarding(_vault!);
+      }
       return;
     }
     setState(() => _index++);
@@ -130,7 +142,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   void _back() {
     if (_index == 0) {
-      AppScope.of(context).backToModeChoice();
+      if (_adding) {
+        Navigator.of(context).pop();
+      } else {
+        AppScope.of(context).backToModeChoice();
+      }
     } else {
       setState(() {
         _error = null;
@@ -195,7 +211,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                               dimension: 20,
                               child: CircularProgressIndicator(strokeWidth: 2),
                             )
-                          : Text(_step == _Step.protect ? 'Готово' : 'Далее'),
+                          : Text(_last ? 'Готово' : 'Далее'),
                     ),
                   ),
                 ),
@@ -232,7 +248,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         ];
       case _Step.choose:
         return [
-          title('У вас уже есть фраза?'),
+          title(_adding ? 'Фраза нового профиля' : 'У вас уже есть фраза?'),
           RadioGroup<_Path>(
             groupValue: _path,
             onChanged: (v) => setState(() => _path = v!),
@@ -277,6 +293,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               icon: const Icon(Icons.auto_fix_high),
               label: const Text('Подставить учебную фразу'),
               onPressed: () => setState(() => _restore.text = demoMnemonic),
+            ),
+          if (_adding)
+            const Hint(
+              short:
+                  'Та же фраза с другой passphrase — тоже отдельный профиль: выберите '
+                  '«Восстановить», введите свою фразу и новую passphrase.',
             ),
           const Hint(
             short: 'Не используйте фразу от криптокошелька с деньгами. Заведите для паролей отдельную.',

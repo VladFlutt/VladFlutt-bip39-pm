@@ -105,6 +105,13 @@ impl AppKey {
             .expect("output length within HKDF limit");
     }
 
+    /// 32 байта HKDF(k_app, info) для производных ключей других модулей.
+    pub(crate) fn hkdf_32(&self, info: &[u8]) -> Zeroizing<[u8; 32]> {
+        let mut k = Zeroizing::new([0u8; 32]);
+        self.expand(info, k.as_mut());
+        k
+    }
+
     /// `k_site` = HKDF(k_app, info), info однозначно кодирует все поля
     /// (длина-префикс), чтобы `a|b` и `a`,`|b` не совпали.
     pub fn site_key(&self, site: &Site, policy: &Policy) -> Zeroizing<[u8; 32]> {

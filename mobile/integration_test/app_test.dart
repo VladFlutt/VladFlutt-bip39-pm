@@ -9,6 +9,8 @@ import 'package:mobile/src/services/key_store.dart';
 import 'package:mobile/src/services/license_store.dart';
 import 'package:mobile/src/state/app_state.dart';
 
+import 'pro_cases.dart';
+
 /// Полный путь через настоящее Rust-ядро: учебная фраза → онбординг →
 /// пароль github.com должен совпасть с вектором из SPEC.md.
 void main() {
@@ -156,4 +158,6 @@ void main() {
     expect(state.isPro, isFalse);
     expect(await state.licenseStore.read(), isNull);
   });
+
+  group('Pro', proCases);
 }

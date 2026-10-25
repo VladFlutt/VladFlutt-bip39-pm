@@ -3,7 +3,8 @@
 use std::path::PathBuf;
 use std::process::ExitCode;
 
-use bip39_pm::{AppKey, Entry, Index, Policy, Site};
+use bip39_pm::index::SecretEntry;
+use bip39_pm::{transfer, AppKey, Entry, Index, Policy, SecretKind, Site};
 use clap::{Args, Parser, Subcommand};
 use zeroize::Zeroizing;
 
@@ -55,6 +56,50 @@ enum Command {
     },
     /// Список аккаунтов из индекса.
     List,
+    /// Секрет из той же фразы: PIN, кодовые слова, пароль Wi‑Fi, ключ SSH.
+    Secret {
+        #[arg(value_enum)]
+        kind: SecretArg,
+        /// Метка: «карта сбер», «домашний wifi», «github laptop».
+        label: String,
+        /// Длина PIN или пароля Wi‑Fi, число слов.
+        #[arg(long)]
+        size: Option<u8>,
+        #[arg(long, default_value_t = 1)]
+        counter: u32,
+        /// Сохранить метку в индекс (значение не сохраняется).
+        #[arg(long)]
+        save: bool,
+    },
+    /// Код переноса индекса на другое устройство (`PMX1:…`).
+    Export,
+    /// Влить индекс из кода переноса (аргумент или stdin).
+    Import { code: Option<String> },
+}
+
+#[derive(Clone, Copy, clap::ValueEnum)]
+enum SecretArg {
+    Pin,
+    Words,
+    Wifi,
+    Ssh,
+}
+
+impl SecretArg {
+    fn kind(self, size: Option<u8>) -> SecretKind {
+        match self {
+            SecretArg::Pin => SecretKind::Pin {
+                length: size.unwrap_or(4),
+            },
+            SecretArg::Words => SecretKind::Words {
+                count: size.unwrap_or(4),
+            },
+            SecretArg::Wifi => SecretKind::Wifi {
+                length: size.unwrap_or(20),
+            },
+            SecretArg::Ssh => SecretKind::Ssh,
+        }
+    }
 }
 
 #[derive(Args)]
@@ -127,7 +172,9 @@ fn run(cli: Cli) -> AnyResult<()> {
             let probe = Site::new(&site, &login, 1)?;
             let (base_counter, base_policy) = index
                 .find(&probe.domain, &probe.login)
-                .map_or((1, Policy::default()), |e| (e.counter, e.policy));
+                .map_or((1, index.default_policy.unwrap_or_default()), |e| {
+                    (e.counter, e.policy)
+                });
             let counter = opts.counter.unwrap_or(base_counter);
             let policy = opts.apply(&base_policy);
             let site = Site { counter, ..probe };
@@ -154,7 +201,7 @@ fn run(cli: Cli) -> AnyResult<()> {
                     domain: probe.domain.clone(),
                     login: probe.login.clone(),
                     counter: 1,
-                    policy: Policy::default(),
+                    policy: index.default_policy.unwrap_or_default(),
                     note: None,
                 });
             entry.counter += 1;
@@ -181,6 +228,62 @@ fn run(cli: Cli) -> AnyResult<()> {
                     e.policy.canonical()
                 );
             }
+            for s in &index.secrets {
+                println!(
+                    "секрет\t{}\t#{}\t{}",
+                    s.label,
+                    s.counter,
+                    s.kind.canonical()
+                );
+            }
+        }
+        Command::Secret {
+            kind,
+            label,
+            size,
+            counter,
+            save,
+        } => {
+            let key = unlock()?;
+            let kind = kind.kind(size);
+            let secret = key.secret(&kind, &label, counter)?;
+            if let Some(public) = &secret.public {
+                eprintln!("открытый ключ:\n{public}\n");
+            }
+            println!("{}", secret.value.as_str());
+            if save {
+                let mut index = load_index(&key, index_path.as_ref())?;
+                let label = bip39_pm::normalize::login(&label);
+                index
+                    .secrets
+                    .retain(|s| !(s.kind == kind && s.label == label));
+                index.secrets.push(SecretEntry {
+                    label,
+                    kind,
+                    counter,
+                    note: None,
+                });
+                save_index(&key, &index, index_path.as_ref())?;
+            }
+        }
+        Command::Export => {
+            let key = unlock()?;
+            let index = load_index(&key, index_path.as_ref())?;
+            println!("{}", transfer::export_text(&index, &key)?);
+        }
+        Command::Import { code } => {
+            let code = match code {
+                Some(c) => c,
+                None => std::io::read_to_string(std::io::stdin())?,
+            };
+            let key = unlock()?;
+            let mut index = load_index(&key, index_path.as_ref())?;
+            let r = index.merge(transfer::import_text(&code, &key)?);
+            eprintln!(
+                "добавлено: {}, обновлено: {}, без изменений: {}",
+                r.added, r.updated, r.kept
+            );
+            save_index(&key, &index, index_path.as_ref())?;
         }
     }
     Ok(())

@@ -8,6 +8,8 @@
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>NSFaceIDUsageDescription</key>
 	<string>Face ID открывает ManagerBIP без ввода seed-фразы.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Камера сканирует QR, чтобы перенести список сайтов с другого телефона.</string>
 	<key>CFBundleDisplayName</key>
 	<string>ManagerBIP</string>
 	<key>CFBundleExecutable</key>

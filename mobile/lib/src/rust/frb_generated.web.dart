@@ -58,10 +58,19 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   bool dco_decode_bool(dynamic raw);
 
   @protected
+  IndexData dco_decode_box_autoadd_index_data(dynamic raw);
+
+  @protected
   PasswordPolicy dco_decode_box_autoadd_password_policy(dynamic raw);
 
   @protected
   Derived dco_decode_derived(dynamic raw);
+
+  @protected
+  int dco_decode_i_32(dynamic raw);
+
+  @protected
+  IndexData dco_decode_index_data(dynamic raw);
 
   @protected
   List<String> dco_decode_list_String(dynamic raw);
@@ -79,13 +88,37 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   Uint8List dco_decode_list_prim_u_8_strict(dynamic raw);
 
   @protected
+  List<RuleTemplate> dco_decode_list_rule_template(dynamic raw);
+
+  @protected
+  List<SecretItem> dco_decode_list_secret_item(dynamic raw);
+
+  @protected
+  MergeResult dco_decode_merge_result(dynamic raw);
+
+  @protected
   String? dco_decode_opt_String(dynamic raw);
+
+  @protected
+  PasswordPolicy? dco_decode_opt_box_autoadd_password_policy(dynamic raw);
 
   @protected
   PasswordPolicy dco_decode_password_policy(dynamic raw);
 
   @protected
   ProLicense dco_decode_pro_license(dynamic raw);
+
+  @protected
+  RuleTemplate dco_decode_rule_template(dynamic raw);
+
+  @protected
+  SecretItem dco_decode_secret_item(dynamic raw);
+
+  @protected
+  SecretType dco_decode_secret_type(dynamic raw);
+
+  @protected
+  SecretValue dco_decode_secret_value(dynamic raw);
 
   @protected
   int dco_decode_u_32(dynamic raw);
@@ -130,12 +163,21 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   bool sse_decode_bool(SseDeserializer deserializer);
 
   @protected
+  IndexData sse_decode_box_autoadd_index_data(SseDeserializer deserializer);
+
+  @protected
   PasswordPolicy sse_decode_box_autoadd_password_policy(
     SseDeserializer deserializer,
   );
 
   @protected
   Derived sse_decode_derived(SseDeserializer deserializer);
+
+  @protected
+  int sse_decode_i_32(SseDeserializer deserializer);
+
+  @protected
+  IndexData sse_decode_index_data(SseDeserializer deserializer);
 
   @protected
   List<String> sse_decode_list_String(SseDeserializer deserializer);
@@ -153,13 +195,41 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   Uint8List sse_decode_list_prim_u_8_strict(SseDeserializer deserializer);
 
   @protected
+  List<RuleTemplate> sse_decode_list_rule_template(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  List<SecretItem> sse_decode_list_secret_item(SseDeserializer deserializer);
+
+  @protected
+  MergeResult sse_decode_merge_result(SseDeserializer deserializer);
+
+  @protected
   String? sse_decode_opt_String(SseDeserializer deserializer);
+
+  @protected
+  PasswordPolicy? sse_decode_opt_box_autoadd_password_policy(
+    SseDeserializer deserializer,
+  );
 
   @protected
   PasswordPolicy sse_decode_password_policy(SseDeserializer deserializer);
 
   @protected
   ProLicense sse_decode_pro_license(SseDeserializer deserializer);
+
+  @protected
+  RuleTemplate sse_decode_rule_template(SseDeserializer deserializer);
+
+  @protected
+  SecretItem sse_decode_secret_item(SseDeserializer deserializer);
+
+  @protected
+  SecretType sse_decode_secret_type(SseDeserializer deserializer);
+
+  @protected
+  SecretValue sse_decode_secret_value(SseDeserializer deserializer);
 
   @protected
   int sse_decode_u_32(SseDeserializer deserializer);
@@ -172,9 +242,6 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   BigInt sse_decode_usize(SseDeserializer deserializer);
-
-  @protected
-  int sse_decode_i_32(SseDeserializer deserializer);
 
   @protected
   void sse_encode_AnyhowException(
@@ -213,6 +280,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_bool(bool self, SseSerializer serializer);
 
   @protected
+  void sse_encode_box_autoadd_index_data(
+    IndexData self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_box_autoadd_password_policy(
     PasswordPolicy self,
     SseSerializer serializer,
@@ -220,6 +293,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_derived(Derived self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_i_32(int self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_index_data(IndexData self, SseSerializer serializer);
 
   @protected
   void sse_encode_list_String(List<String> self, SseSerializer serializer);
@@ -243,7 +322,28 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_list_rule_template(
+    List<RuleTemplate> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_secret_item(
+    List<SecretItem> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_merge_result(MergeResult self, SseSerializer serializer);
+
+  @protected
   void sse_encode_opt_String(String? self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_opt_box_autoadd_password_policy(
+    PasswordPolicy? self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_password_policy(
@@ -253,6 +353,18 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_pro_license(ProLicense self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_rule_template(RuleTemplate self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_secret_item(SecretItem self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_secret_type(SecretType self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_secret_value(SecretValue self, SseSerializer serializer);
 
   @protected
   void sse_encode_u_32(int self, SseSerializer serializer);
@@ -265,9 +377,6 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_usize(BigInt self, SseSerializer serializer);
-
-  @protected
-  void sse_encode_i_32(int self, SseSerializer serializer);
 }
 
 // Section: wire_class

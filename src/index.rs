@@ -1,5 +1,7 @@
 //! Зашифрованный индекс аккаунтов: домены, логины, счётчики, политики.
-//! Паролей в нём нет. Формат файла: `PMIX` | версия (1 байт) | nonce (24) |
+//! Паролей в нём нет. Там же секреты (метки без значений), шаблоны правил и правило
+//! по умолчанию: всё, что нужно перенести на другое устройство.
+//! Формат файла: `PMIX` | версия (1 байт) | nonce (24) |
 //! XChaCha20-Poly1305(JSON), заголовок — associated data.
 
 use chacha20poly1305::aead::{Aead, KeyInit, Payload};
@@ -7,6 +9,7 @@ use chacha20poly1305::{XChaCha20Poly1305, XNonce};
 use serde::{Deserialize, Serialize};
 
 use crate::policy::Policy;
+use crate::secret::SecretKind;
 use crate::{Error, Result};
 
 const MAGIC: &[u8; 4] = b"PMIX";
@@ -24,9 +27,35 @@ pub struct Entry {
     pub note: Option<String>,
 }
 
+/// Секрет без значения: вид, метка, счётчик.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SecretEntry {
+    pub label: String,
+    #[serde(flatten)]
+    pub kind: SecretKind,
+    pub counter: u32,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub note: Option<String>,
+}
+
+/// Именованное правило пароля.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Template {
+    pub name: String,
+    pub policy: Policy,
+}
+
+/// Новые поля необязательны: старые файлы читаются, а старые версии `pm` их пропускают.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Index {
     pub entries: Vec<Entry>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub secrets: Vec<SecretEntry>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub templates: Vec<Template>,
+    /// Правило для новых сайтов; `None` — правило по умолчанию из спецификации.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub default_policy: Option<Policy>,
 }
 
 impl Index {

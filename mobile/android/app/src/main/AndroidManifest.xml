@@ -1,5 +1,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.USE_BIOMETRIC"/>
+    <!-- Сканирование QR при переносе списка сайтов. -->
+    <uses-permission android:name="android.permission.CAMERA"/>
     <application
         android:label="ManagerBIP"
         android:allowBackup="false"

@@ -84,10 +84,47 @@ stream = HKDF-Expand-SHA256(prk = k_site, info = "bip39-pm/v1/stream", L = 1024)
 
 Файл: `"PMIX"` || `0x01` || nonce (24 байта, случайный) || XChaCha20-Poly1305(JSON).
 Первые 5 байт — associated data. JSON: `{"entries":[{"domain","login","counter","policy",
-"note"?}]}`. Паролей в индексе нет. Без индекса восстанавливаются все пароли со
+"note"?}], "secrets"?:[…], "templates"?:[{"name","policy"}], "default_policy"?}`.
+Необязательные поля появились позже и не пишутся, когда пусты; старые версии их пропускают.
+Секрет в индексе: `{"label","kind","length"|"count"?,"counter","note"?}`, значения нет.
+Паролей в индексе нет. Без индекса восстанавливаются все пароли со
 счётчиком 1 и политикой по умолчанию.
 
-## 9. Тестовые векторы
+## 9. Перенос
+
+Код переноса: `"PMX1:"` || base64url без `=` от файла индекса (раздел 8). Для QR код режется
+на кадры `PMQ1:<номер>/<всего>:<часть>`. При слиянии для одного сайта или секрета побеждает
+больший счётчик, при равенстве — своя запись.
+
+## 10. Секреты
+
+Метка нормализуется как логин (раздел 3). Вид и его каноническая строка:
+
+| Вид | Каноническая строка | Размер |
+| --- | --- | --- |
+| PIN | `pin;len=<n>` | 4..=12 цифр |
+| Слова | `words;n=<n>` | 3..=8 слов |
+| Wi‑Fi | `wifi;len=<n>` | 12..=63 символа |
+| SSH | `ssh-ed25519` | — |
+
+```
+info = "bip39-pm/v1/secret" || u32be(len(kind)) || kind || u32be(len(label)) || label || u32be(counter)
+k_secret = HKDF-SHA256(salt = "bip39-pm/v1", ikm = k_app, info, L = 32)
+stream = HKDF-Expand-SHA256(prk = k_secret, info = "bip39-pm/v1/stream", L = 1024)
+```
+
+- PIN: `n` раз `DIGITS[uniform(10)]`.
+- Слова: `n` раз слово BIP39 с номером `((b0 << 8) | b1) & 0x7ff` из двух следующих байт, через пробел.
+- Wi‑Fi: кодирование раздела 6 с политикой `len=<n>;cls=lud`.
+- SSH: `k_secret` — seed ключа Ed25519 (RFC 8032), комментарий — метка; файл OpenSSH
+  без шифрования, checkint выводится из ключа.
+
+Векторы (мнемоника `abandon ×11 about`, счётчик 1): PIN 4 «карта» — `5987`; PIN 6
+«карта сбер» — `936802`; 4 слова «secret question» — `rice trade budget staff`;
+Wi‑Fi 20 «home wifi» — `1w2hnpKJyh93chs4N61a`; SSH «github laptop» — открытый ключ
+`ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJv18B347hIuVqi6ZQ6S6DHpx082zNUl7P3W8NcYfnQT`.
+
+## 11. Тестовые векторы
 
 Мнемоника `abandon ×11 about`, passphrase пустая. Отпечаток: `era-primary-finish`.
 

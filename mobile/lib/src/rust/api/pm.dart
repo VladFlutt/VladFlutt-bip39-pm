@@ -7,7 +7,35 @@ import '../frb_generated.dart';
 
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_fields_are_eq`, `assert_fields_are_eq`, `clone`, `clone`, `clone`, `eq`, `eq`, `fmt`, `fmt`, `fmt`, `from`, `from`, `from`, `from`
+// These functions are ignored because they are not marked as `pub`: `spec`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`
+
+/// Размер секрета: `[минимум, максимум, по умолчанию]`; у SSH размера нет.
+Uint8List secretSizeBounds({required SecretType kind}) =>
+    RustLib.instance.api.crateApiPmSecretSizeBounds(kind: kind);
+
+/// Метка секрета так, как она входит в деривацию.
+String normalizeLabel({required String input}) =>
+    RustLib.instance.api.crateApiPmNormalizeLabel(input: input);
+
+/// Влить пришедший индекс в свой: побеждает больший счётчик, при равенстве — свой.
+MergeResult mergeIndex({
+  required IndexData local,
+  required IndexData incoming,
+}) =>
+    RustLib.instance.api.crateApiPmMergeIndex(local: local, incoming: incoming);
+
+/// Закрыть ключ профиля кодом (PBKDF2, доли секунды — вызов асинхронный).
+Future<Uint8List> wrapSecret({
+  required List<int> secret,
+  required String code,
+}) => RustLib.instance.api.crateApiPmWrapSecret(secret: secret, code: code);
+
+/// Открыть ключ профиля кодом. Ошибка — неверный код.
+Future<Uint8List> unwrapSecret({
+  required List<int> blob,
+  required String code,
+}) => RustLib.instance.api.crateApiPmUnwrapSecret(blob: blob, code: code);
 
 /// Допустимое число слов seed-фразы: 12, 15, 18, 21, 24.
 Uint32List seedWordCounts() => RustLib.instance.api.crateApiPmSeedWordCounts();
@@ -28,7 +56,7 @@ String normalizeLogin({required String input}) =>
 
 // Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Vault>>
 abstract class Vault implements RustOpaqueInterface {
-  List<Account> decryptIndex({required List<int> data});
+  IndexData decryptIndex({required List<int> data});
 
   Derived derive({
     required String site,
@@ -37,14 +65,26 @@ abstract class Vault implements RustOpaqueInterface {
     required PasswordPolicy policy,
   });
 
-  /// Аккаунты → зашифрованный файл индекса (формат `PMIX`, совместим с CLI).
-  Uint8List encryptIndex({required List<Account> accounts});
+  SecretValue deriveSecret({
+    required SecretType kind,
+    required int size,
+    required String label,
+    required int counter,
+  });
+
+  /// Индекс → зашифрованный файл (формат `PMIX`, совместим с CLI).
+  Uint8List encryptIndex({required IndexData data});
+
+  /// Индекс → код переноса `PMX1:…` (открывается только той же фразой).
+  String exportText({required IndexData data});
 
   /// Три слова — отпечаток seed + passphrase.
   String fingerprint();
 
   static Vault fromKey({required List<int> key}) =>
       RustLib.instance.api.crateApiPmVaultFromKey(key: key);
+
+  IndexData importText({required String text});
 
   Uint8List keyBytes();
 
@@ -131,6 +171,70 @@ class Derived {
           checkWords == other.checkWords;
 }
 
+/// Всё содержимое индекса профиля.
+class IndexData {
+  final List<Account> accounts;
+  final List<SecretItem> secrets;
+  final List<RuleTemplate> templates;
+  final PasswordPolicy? defaultPolicy;
+
+  const IndexData({
+    required this.accounts,
+    required this.secrets,
+    required this.templates,
+    this.defaultPolicy,
+  });
+
+  static Future<IndexData> default_() =>
+      RustLib.instance.api.crateApiPmIndexDataDefault();
+
+  @override
+  int get hashCode =>
+      accounts.hashCode ^
+      secrets.hashCode ^
+      templates.hashCode ^
+      defaultPolicy.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is IndexData &&
+          runtimeType == other.runtimeType &&
+          accounts == other.accounts &&
+          secrets == other.secrets &&
+          templates == other.templates &&
+          defaultPolicy == other.defaultPolicy;
+}
+
+/// Итог слияния: новый индекс и сколько записей добавлено, обновлено, осталось как было.
+class MergeResult {
+  final IndexData data;
+  final int added;
+  final int updated;
+  final int kept;
+
+  const MergeResult({
+    required this.data,
+    required this.added,
+    required this.updated,
+    required this.kept,
+  });
+
+  @override
+  int get hashCode =>
+      data.hashCode ^ added.hashCode ^ updated.hashCode ^ kept.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is MergeResult &&
+          runtimeType == other.runtimeType &&
+          data == other.data &&
+          added == other.added &&
+          updated == other.updated &&
+          kept == other.kept;
+}
+
 /// Политика пароля (SPEC.md, раздел 4).
 class PasswordPolicy {
   final int length;
@@ -172,4 +276,83 @@ class PasswordPolicy {
           upper == other.upper &&
           digits == other.digits &&
           symbols == other.symbols;
+}
+
+/// Именованное правило пароля.
+class RuleTemplate {
+  final String name;
+  final PasswordPolicy policy;
+
+  const RuleTemplate({required this.name, required this.policy});
+
+  @override
+  int get hashCode => name.hashCode ^ policy.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is RuleTemplate &&
+          runtimeType == other.runtimeType &&
+          name == other.name &&
+          policy == other.policy;
+}
+
+/// Секрет без значения: вид, размер (длина или число слов, для SSH 0), метка, версия.
+class SecretItem {
+  final SecretType kind;
+  final int size;
+  final String label;
+  final int counter;
+  final String? note;
+
+  const SecretItem({
+    required this.kind,
+    required this.size,
+    required this.label,
+    required this.counter,
+    this.note,
+  });
+
+  @override
+  int get hashCode =>
+      kind.hashCode ^
+      size.hashCode ^
+      label.hashCode ^
+      counter.hashCode ^
+      note.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is SecretItem &&
+          runtimeType == other.runtimeType &&
+          kind == other.kind &&
+          size == other.size &&
+          label == other.label &&
+          counter == other.counter &&
+          note == other.note;
+}
+
+/// Вид секрета из фразы.
+enum SecretType { pin, words, wifi, ssh }
+
+/// Значение секрета. Для SSH `value` — закрытый ключ OpenSSH, `public` — открытый.
+class SecretValue {
+  final String label;
+  final String value;
+  final String? public;
+
+  const SecretValue({required this.label, required this.value, this.public});
+
+  @override
+  int get hashCode => label.hashCode ^ value.hashCode ^ public.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is SecretValue &&
+          runtimeType == other.runtimeType &&
+          label == other.label &&
+          value == other.value &&
+          public == other.public;
 }
