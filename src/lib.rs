@@ -6,11 +6,13 @@
 
 pub mod derive;
 pub mod index;
+pub mod license;
 pub mod normalize;
 pub mod policy;
 
 pub use derive::{AppKey, Site};
 pub use index::{Entry, Index};
+pub use license::{Edition, License};
 pub use policy::Policy;
 
 #[derive(Debug)]
@@ -20,6 +22,7 @@ pub enum Error {
     Domain(String),
     Policy(String),
     Index(String),
+    License(String),
 }
 
 impl std::fmt::Display for Error {
@@ -30,6 +33,7 @@ impl std::fmt::Display for Error {
             Error::Domain(m) => write!(f, "некорректный домен: {m}"),
             Error::Policy(m) => write!(f, "некорректная политика: {m}"),
             Error::Index(m) => write!(f, "ошибка индекса: {m}"),
+            Error::License(m) => write!(f, "ключ Pro: {m}"),
         }
     }
 }
