@@ -117,7 +117,8 @@ $("reset-index").addEventListener("click", () =>
 
 $("new-seed").addEventListener("click", () =>
   guarded(async () => {
-    const { mnemonic } = await send("generate", { words: 24 });
+    const words = Number($("new-seed-words").value);
+    const { mnemonic } = await send("generate", { words });
     $("generated-words").textContent = mnemonic;
     $("generated").hidden = false;
   }),

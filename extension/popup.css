@@ -21,6 +21,9 @@ button { padding: 7px 10px; border: 1px solid var(--line); border-radius: 6px; b
 button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-fg); }
 button.link, .link { border: none; background: none; color: var(--accent); padding: 4px 0; cursor: pointer; }
 button:disabled { opacity: .5; cursor: default; }
+.new-seed { display: flex; align-items: center; gap: 8px; }
+select { padding: 4px 6px; border: 1px solid var(--line); border-radius: 6px; background: var(--field);
+         color: var(--fg); font: inherit; }
 #unlock { width: 100%; margin-top: 12px; }
 header { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
 .domain { font-size: 16px; font-weight: 600; word-break: break-all; }

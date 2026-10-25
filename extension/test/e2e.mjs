@@ -52,6 +52,14 @@ try {
   await site.goto(`http://localhost:${port}/login`);
 
   const popup = await openPopup();
+  // Новая фраза: выбор 12 или 24 слов.
+  for (const words of [12, 24]) {
+    await popup.selectOption("#new-seed-words", String(words));
+    await popup.click("#new-seed");
+    await popup.waitForSelector("#generated:not([hidden])");
+    const generated = (await popup.textContent("#generated-words")).trim();
+    assert.equal(generated.split(" ").length, words);
+  }
   await popup.locator("#mnemonic").fill(ABANDON);
   await popup.click("#unlock");
   await popup.waitForSelector("#unlocked:not([hidden])");
