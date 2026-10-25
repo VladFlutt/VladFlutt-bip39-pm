@@ -265,14 +265,20 @@ function wizSeedTab(existing) {
   $("seed-existing").setAttribute("aria-selected", String(existing));
   $("seed-new-pane").hidden = existing;
   $("seed-existing-pane").hidden = !existing;
-  if (!existing && !wiz.words) {
-    wiz.words = core.generate(24).split(" ");
-    $("words").replaceChildren(
-      ...wiz.words.map((w) => Object.assign(document.createElement("li"), { textContent: w })),
-    );
-  }
+  if (!existing && !wiz.words) wizGenerate(24);
   wizStep("seed");
   if (existing) $("wiz-mnemonic").focus();
+}
+
+// Новая фраза из 12 или 24 слов. Смена длины — новая фраза, отметку «записал» снимаем.
+function wizGenerate(count) {
+  wiz.words = core.generate(count).split(" ");
+  $("words").replaceChildren(
+    ...wiz.words.map((w) => Object.assign(document.createElement("li"), { textContent: w })),
+  );
+  for (const n of [12, 24]) $(`words-${n}`).setAttribute("aria-checked", String(n === count));
+  $("wrote").checked = false;
+  $("to-verify").disabled = true;
 }
 
 function startWizard() {
@@ -617,6 +623,15 @@ $("to-welcome").addEventListener("click", () => (status(""), showScreen("welcome
 
 $("seed-new").addEventListener("click", guarded(async () => wizSeedTab(false)));
 $("seed-existing").addEventListener("click", guarded(async () => wizSeedTab(true)));
+for (const n of [12, 24]) {
+  $(`words-${n}`).addEventListener(
+    "click",
+    guarded(async () => {
+      if (wiz.words?.length === n) return;
+      wizGenerate(n);
+    }),
+  );
+}
 $("wrote").addEventListener("change", () => ($("to-verify").disabled = !$("wrote").checked));
 $("to-verify").addEventListener("click", guarded(async () => toVerify()));
 $("verify-next").addEventListener("click", verifyWords);

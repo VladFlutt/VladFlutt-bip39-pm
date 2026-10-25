@@ -86,7 +86,7 @@ button.wide { width: 100%; margin-top: 18px; }
 .warn-tip::before { content: "⚠️ "; }
 .tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 4px; border-radius: 14px; background: var(--field); margin-bottom: 14px; }
 .tab { border: none; background: none; border-radius: 10px; padding: 10px; }
-.tab[aria-selected="true"] { background: var(--card); box-shadow: var(--shadow); font-weight: 600; }
+.tab[aria-selected="true"], .tab[aria-checked="true"] { background: var(--card); box-shadow: var(--shadow); font-weight: 600; }
 .words { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; padding: 0; margin: 0; list-style: none; counter-reset: w; }
 .words li { counter-increment: w; padding: 8px 8px; border-radius: 10px; background: var(--field);
             font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 14px; user-select: all; }

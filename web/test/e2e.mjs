@@ -79,6 +79,13 @@ try {
   await page.waitForSelector("#wizard:not([hidden])");
   assert.equal(await page.isVisible("#demo-badge"), false);
   assert.equal(await page.locator("#words li").count(), 24);
+  // Выбор 12 слов: новая фраза, отметка «записал» сбрасывается.
+  await page.check("#wrote");
+  await page.click("#words-12");
+  assert.equal(await page.locator("#words li").count(), 12);
+  assert.equal(await page.isChecked("#wrote"), false);
+  await page.click("#words-24");
+  assert.equal(await page.locator("#words li").count(), 24);
   assert.equal(await page.isDisabled("#to-verify"), true);
   const words = await page.locator("#words li").allTextContents();
   await page.check("#wrote");

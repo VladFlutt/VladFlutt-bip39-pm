@@ -71,13 +71,18 @@
 
       <div id="step-seed" class="card step" hidden>
         <h2>Шаг 1. Seed-фраза</h2>
-        <p class="tip">Seed-фраза — это 24 слова, из которых вычисляются все ваши пароли. Это единственное, что нужно беречь.</p>
+        <p class="tip">Seed-фраза — это 12 или 24 слова, из которых вычисляются все ваши пароли. Это единственное, что нужно беречь.</p>
         <div class="tabs" role="tablist">
           <button id="seed-new" class="tab" role="tab">Создать новую</button>
           <button id="seed-existing" class="tab" role="tab">У меня есть</button>
         </div>
 
         <div id="seed-new-pane" hidden>
+          <div class="tabs" role="radiogroup" aria-label="Число слов">
+            <button id="words-12" class="tab" role="radio" data-words="12">12 слов</button>
+            <button id="words-24" class="tab" role="radio" data-words="24">24 слова</button>
+          </div>
+          <p class="hint">12 слов дают 128 бит стойкости, этого достаточно. 24 слова — 256 бит, с запасом.</p>
           <ol id="words" class="words"></ol>
           <p class="tip warn-tip">Запишите слова по порядку на бумагу и храните офлайн. Не фотографируйте и не храните в заметках. Не используйте фразу от криптокошелька.</p>
           <label class="check"><input id="wrote" type="checkbox"> Я записал фразу на бумагу</label>
