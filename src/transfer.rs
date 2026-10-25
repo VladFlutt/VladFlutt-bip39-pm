@@ -12,6 +12,7 @@ use crate::{normalize, Error, Result};
 const PREFIX: &str = "PMX1:";
 
 /// Индекс → код для переноса.
+#[cfg(feature = "os-rng")]
 pub fn export_text(index: &Index, key: &AppKey) -> Result<String> {
     let blob = index.encrypt(&key.index_key())?;
     Ok(format!("{PREFIX}{}", BASE64URL_NOPAD.encode(&blob)))

@@ -11,6 +11,7 @@ pub mod normalize;
 pub mod policy;
 pub mod secret;
 pub mod transfer;
+pub mod vault;
 pub mod wrap;
 
 pub use derive::{AppKey, Site};
@@ -27,6 +28,7 @@ pub enum Error {
     Policy(String),
     Index(String),
     License(String),
+    Vault(String),
 }
 
 impl std::fmt::Display for Error {
@@ -38,6 +40,7 @@ impl std::fmt::Display for Error {
             Error::Policy(m) => write!(f, "некорректная политика: {m}"),
             Error::Index(m) => write!(f, "ошибка индекса: {m}"),
             Error::License(m) => write!(f, "ключ Pro: {m}"),
+            Error::Vault(m) => write!(f, "{m}"),
         }
     }
 }

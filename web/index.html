@@ -1,0 +1,266 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="referrer" content="no-referrer">
+  <title>ManagerBIP — пароли из seed-фразы</title>
+  <meta name="description" content="ManagerBIP: детерминированный менеджер паролей. Пароли вычисляются из BIP39 seed-фразы прямо в браузере, без сервера и без хранилища паролей.">
+  <meta name="application-name" content="ManagerBIP">
+  <meta name="apple-mobile-web-app-title" content="ManagerBIP">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#5b6cff">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="top">
+    <div class="brand"><img src="icon.svg" alt="" width="28" height="28"> ManagerBIP</div>
+    <div id="session" hidden>
+      <span id="demo-badge" class="badge" hidden>Обучение</span>
+      <span class="muted fp">отпечаток <b id="fingerprint"></b></span>
+      <button id="lock" class="link">Выйти</button>
+    </div>
+  </header>
+
+  <main>
+    <!-- Стартовый экран: выбор режима. -->
+    <section id="welcome" hidden>
+      <div class="hero">
+        <img src="icon.svg" alt="" width="72" height="72">
+        <h1>ManagerBIP</h1>
+        <p class="lead">Все пароли из одной seed-фразы. Их не нужно хранить: каждый пароль вычисляется заново прямо на вашем устройстве.</p>
+      </div>
+
+      <div class="choices">
+        <button id="mode-learn" class="choice">
+          <span class="choice-icon" aria-hidden="true">🎓</span>
+          <span class="choice-title">Обучение</span>
+          <span class="choice-text">Попробуйте на демо-фразе. Подсказки на каждом шаге, ничего не сохраняется.</span>
+        </button>
+        <button id="mode-start" class="choice primary-choice">
+          <span class="choice-icon" aria-hidden="true">🚀</span>
+          <span class="choice-title">Начать работу</span>
+          <span class="choice-text">Пошаговая настройка: seed-фраза, вход по паролю, первый сайт.</span>
+        </button>
+      </div>
+      <p class="center"><button id="have-seed" class="link">У меня уже есть seed-фраза, войти</button></p>
+
+      <details class="card how">
+        <summary>Как это работает</summary>
+        <ul class="facts">
+          <li><b>Одна фраза — все пароли.</b> Пароль для сайта получается из seed-фразы, домена и логина. Потеряли телефон — те же пароли вернутся по той же фразе.</li>
+          <li><b>Всё считается в браузере.</b> Seed-фраза и пароли не отправляются в сеть: политика безопасности страницы запрещает любые внешние запросы.</li>
+          <li><b>Seed-фраза не сохраняется.</b> На устройстве может лежать только ключ, зашифрованный вашим мастер-паролем.</li>
+          <li><b>Открытый код.</b> Те же пароли выдают CLI <code>pm</code> и расширение для браузера. <a href="https://github.com/VladFlutt/VladFlutt-bip39-pm" rel="noreferrer">Исходный код и спецификация</a>.</li>
+        </ul>
+      </details>
+    </section>
+
+    <!-- Пошаговая настройка. -->
+    <section id="wizard" hidden>
+      <ol class="steps" aria-label="Шаги настройки">
+        <li data-step="seed">Фраза</li>
+        <li data-step="verify">Проверка</li>
+        <li data-step="vault">Вход</li>
+        <li data-step="done">Готово</li>
+      </ol>
+
+      <div id="step-seed" class="card step" hidden>
+        <h2>Шаг 1. Seed-фраза</h2>
+        <p class="tip">Seed-фраза — это 12 или 24 слова, из которых вычисляются все ваши пароли. Это единственное, что нужно беречь.</p>
+        <div class="tabs" role="tablist">
+          <button id="seed-new" class="tab" role="tab">Создать новую</button>
+          <button id="seed-existing" class="tab" role="tab">У меня есть</button>
+        </div>
+
+        <div id="seed-new-pane" hidden>
+          <div class="tabs" role="radiogroup" aria-label="Число слов">
+            <button id="words-12" class="tab" role="radio" data-words="12">12 слов</button>
+            <button id="words-24" class="tab" role="radio" data-words="24">24 слова</button>
+          </div>
+          <p class="hint">12 слов дают 128 бит стойкости, этого достаточно. 24 слова — 256 бит, с запасом.</p>
+          <ol id="words" class="words"></ol>
+          <p class="tip warn-tip">Запишите слова по порядку на бумагу и храните офлайн. Не фотографируйте и не храните в заметках. Не используйте фразу от криптокошелька.</p>
+          <label class="check"><input id="wrote" type="checkbox"> Я записал фразу на бумагу</label>
+          <button id="to-verify" class="primary wide" disabled>Далее</button>
+        </div>
+
+        <div id="seed-existing-pane" hidden>
+          <label for="wiz-mnemonic">Ваша seed-фраза</label>
+          <textarea id="wiz-mnemonic" rows="3" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="12 или 24 слова через пробел"></textarea>
+          <details class="more">
+            <summary>Passphrase (необязательно)</summary>
+            <p class="hint">Дополнительное слово к фразе. Если вы его не задавали, оставьте поле пустым.</p>
+            <input id="wiz-passphrase" type="password" autocomplete="off">
+          </details>
+          <button id="existing-next" class="primary wide">Далее</button>
+        </div>
+      </div>
+
+      <div id="step-verify" class="card step" hidden>
+        <h2>Шаг 2. Проверим запись</h2>
+        <p class="tip">Введите слова из вашей записи. Так мы убедимся, что фраза записана верно и вы сможете восстановить пароли.</p>
+        <div id="verify-fields" class="verify"></div>
+        <button id="verify-next" class="primary wide">Проверить</button>
+        <p class="center"><button id="verify-back" class="link">Показать фразу ещё раз</button></p>
+      </div>
+
+      <div id="step-vault" class="card step" hidden>
+        <h2>Шаг 3. Вход на этом устройстве</h2>
+        <p class="tip">Чтобы не вводить seed-фразу каждый раз, придумайте логин и мастер-пароль. Они работают только на этом устройстве и в этом браузере.</p>
+        <label for="wiz-login">Логин</label>
+        <input id="wiz-login" autocomplete="username" autocapitalize="off" spellcheck="false" placeholder="например, vlad">
+        <label for="wiz-password">Мастер-пароль <span class="muted">(не короче 10 символов)</span></label>
+        <input id="wiz-password" type="password" autocomplete="new-password">
+        <label for="wiz-password2">Повторите мастер-пароль</label>
+        <input id="wiz-password2" type="password" autocomplete="new-password">
+        <p class="hint">Длинная фраза из нескольких слов надёжнее короткого сложного пароля. Забытый мастер-пароль не восстановить, но войти всегда можно seed-фразой.</p>
+        <button id="wiz-vault-save" class="primary wide">Создать вход</button>
+        <p class="center"><button id="wiz-vault-skip" class="link">Пропустить, буду входить seed-фразой</button></p>
+      </div>
+
+      <div id="step-done" class="card step" hidden>
+        <h2>Готово 🎉</h2>
+        <p>Отпечаток вашей фразы: <b id="wiz-fingerprint" class="fp-big"></b></p>
+        <ul class="tips">
+          <li>Отпечаток показывается вверху после входа. Если слова другие, значит фраза введена с ошибкой.</li>
+          <li>Чтобы получить пароль, введите сайт и логин. Пароль появится сразу.</li>
+          <li>Пароль на другом устройстве будет тем же, если ввести ту же фразу.</li>
+        </ul>
+        <button id="wiz-finish" class="primary wide">Открыть менеджер</button>
+      </div>
+
+      <p class="center"><button id="wiz-cancel" class="link">Отменить и вернуться на главную</button></p>
+    </section>
+
+    <!-- Вход: по логину или seed-фразой. -->
+    <section id="locked" hidden>
+      <div class="hero small">
+        <img src="icon.svg" alt="" width="56" height="56">
+        <h1>С возвращением</h1>
+      </div>
+
+      <div id="signin" class="card" hidden>
+        <label for="signin-login">Логин</label>
+        <input id="signin-login" autocomplete="username" autocapitalize="off" spellcheck="false">
+        <label for="signin-password">Мастер-пароль</label>
+        <input id="signin-password" type="password" autocomplete="current-password">
+        <button id="signin-submit" class="primary wide">Войти</button>
+        <div class="row-links">
+          <button id="use-seed" class="link">Войти seed-фразой</button>
+          <button id="forget" class="link danger">Удалить вход с устройства</button>
+        </div>
+      </div>
+
+      <div id="seed" class="card">
+        <label for="mnemonic">Seed-фраза</label>
+        <textarea id="mnemonic" rows="3" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="12 или 24 слова через пробел"></textarea>
+        <label for="passphrase">Passphrase <span class="muted">(необязательно)</span></label>
+        <input id="passphrase" type="password" autocomplete="off">
+        <label class="check"><input id="remember" type="checkbox"> Создать вход по логину и паролю на этом устройстве</label>
+        <div id="remember-fields" hidden>
+          <label for="new-login">Логин</label>
+          <input id="new-login" autocomplete="username" autocapitalize="off" spellcheck="false">
+          <label for="new-password">Мастер-пароль <span class="muted">(не короче 10 символов)</span></label>
+          <input id="new-password" type="password" autocomplete="new-password">
+          <label for="new-password2">Повторите мастер-пароль</label>
+          <input id="new-password2" type="password" autocomplete="new-password">
+          <p class="hint">Seed-фраза не сохраняется. На устройстве останется только ключ, зашифрованный мастер-паролем (Argon2id). Забытый мастер-пароль не восстановить, войти можно будет только seed-фразой, поэтому её всё равно нужно хранить на бумаге.</p>
+        </div>
+        <button id="unlock" class="primary wide">Открыть</button>
+        <div class="row-links">
+          <button id="use-signin" class="link" hidden>Войти по логину</button>
+          <button id="reset-index" class="link danger" hidden>Удалить индекс другой seed</button>
+        </div>
+      </div>
+
+      <p class="center row-center">
+        <button id="to-learn" class="link">Режим обучения</button>
+        <button id="to-welcome" class="link">Главный экран</button>
+      </p>
+    </section>
+
+    <!-- Менеджер паролей. -->
+    <section id="unlocked" hidden>
+      <div id="coach" class="coach" hidden role="dialog" aria-live="polite">
+        <div class="coach-head"><b id="coach-step"></b><button id="coach-exit" class="link">Завершить обучение</button></div>
+        <p id="coach-text"></p>
+        <div class="coach-actions">
+          <button id="coach-back" class="ghost">Назад</button>
+          <button id="coach-next" class="primary">Далее</button>
+        </div>
+      </div>
+
+      <div id="generator" class="card">
+        <label for="site">Сайт</label>
+        <input id="site" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="github.com или https://…">
+        <div class="hint">домен: <b id="domain">—</b></div>
+
+        <label for="login">Логин на сайте</label>
+        <input id="login" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="e-mail или имя пользователя">
+
+        <details id="settings" class="more">
+          <summary>Настройки пароля</summary>
+          <div class="grid">
+            <label>Версия <input id="counter" type="number" min="1" value="1"></label>
+            <label>Длина <input id="length" type="number" min="8" max="64" value="20"></label>
+          </div>
+          <div class="classes">
+            <label><input id="lower" type="checkbox" checked> a-z</label>
+            <label><input id="upper" type="checkbox" checked> A-Z</label>
+            <label><input id="digits" type="checkbox" checked> 0-9</label>
+            <label><input id="symbols" type="checkbox" checked> !#$</label>
+          </div>
+        </details>
+
+        <div id="password-box" class="password">
+          <input id="password" type="password" readonly aria-label="Пароль" placeholder="пароль появится здесь">
+          <button id="reveal" class="ghost">Показать</button>
+          <button id="copy" class="primary">Копировать</button>
+        </div>
+        <div class="hint">проверочные слова: <b id="check">—</b></div>
+
+        <div class="actions">
+          <button id="save">Сохранить в индекс</button>
+          <button id="rotate">Сменить пароль</button>
+        </div>
+      </div>
+
+      <div id="accounts-card" class="card">
+        <div class="list-head">
+          <h2>Аккаунты <span id="count" class="muted"></span></h2>
+          <div>
+            <button id="export" class="link">Экспорт</button>
+            <label class="link file">Импорт<input id="import" type="file" accept=".pmx" hidden></label>
+          </div>
+        </div>
+        <input id="filter" placeholder="Поиск" autocomplete="off" hidden>
+        <ul id="accounts"></ul>
+        <p id="empty" class="muted">Индекс пуст. Сохраняйте сюда сайты с нестандартной версией или политикой: остальные пароли восстановятся и без него.</p>
+      </div>
+
+      <div id="vault-card" class="card">
+        <button id="vault-open" class="link">Вход по логину и паролю на этом устройстве</button>
+        <div id="vault-fields" hidden>
+          <label for="vault-login">Логин</label>
+          <input id="vault-login" autocomplete="username" autocapitalize="off" spellcheck="false">
+          <label for="vault-password">Мастер-пароль <span class="muted">(не короче 10 символов)</span></label>
+          <input id="vault-password" type="password" autocomplete="new-password">
+          <label for="vault-password2">Повторите мастер-пароль</label>
+          <input id="vault-password2" type="password" autocomplete="new-password">
+          <p class="hint">После этого на этом устройстве можно входить без seed-фразы. Сохраняется только ключ, зашифрованный мастер-паролем.</p>
+          <button id="vault-save" class="primary wide">Создать вход</button>
+        </div>
+      </div>
+    </section>
+
+    <div id="status" role="status" aria-live="polite"></div>
+  </main>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>

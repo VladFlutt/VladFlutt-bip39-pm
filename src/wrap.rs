@@ -31,6 +31,7 @@ fn err(m: &str) -> Error {
 }
 
 /// Закрыть секрет кодом.
+#[cfg(feature = "os-rng")]
 pub fn wrap(secret: &[u8], code: &str) -> Result<Vec<u8>> {
     if code.trim().is_empty() {
         return Err(err("пустой код"));

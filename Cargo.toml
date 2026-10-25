@@ -14,23 +14,32 @@ path = "src/bin/pm.rs"
 required-features = ["cli"]
 
 [features]
-default = ["cli"]
+default = ["cli", "os-rng"]
+# Системный ГСЧ: генерация seed и nonce индекса внутри библиотеки.
+os-rng = ["dep:getrandom", "bip39/rand"]
 # Зависимости командной строки; мобильное приложение собирает ядро без них.
-cli = ["dep:clap", "dep:rpassword", "dep:dirs"]
+cli = ["os-rng", "dep:clap", "dep:rpassword", "dep:dirs"]
 
 [[bin]]
 name = "pm-license"
 path = "src/bin/pm-license.rs"
+required-features = ["cli"]
+
+[workspace]
+members = [".", "wasm"]
+# Мобильный мост — отдельный крейт со своим Cargo.lock.
+exclude = ["mobile/rust"]
 
 [dependencies]
-bip39 = { version = "2", features = ["rand"] }
+bip39 = { version = "2", default-features = false, features = ["std"] }
 bip32 = { version = "0.5", default-features = false, features = ["secp256k1", "std"] }
 hmac = "0.12"
 sha2 = "0.10"
 hkdf = "0.12"
 zeroize = { version = "1", features = ["derive"] }
-chacha20poly1305 = "0.10"
-getrandom = "0.2"
+chacha20poly1305 = { version = "0.10", default-features = false, features = ["alloc"] }
+argon2 = { version = "0.5", default-features = false, features = ["alloc", "zeroize"] }
+getrandom = { version = "0.2", optional = true }
 unicode-normalization = "0.1"
 url = "2"
 psl = "=2.1.244"  # PSL заморожен: смена списка может изменить eTLD+1 и пароли
@@ -40,7 +49,16 @@ clap = { version = "4", features = ["derive", "env"], optional = true }
 rpassword = { version = "7", optional = true }
 dirs = { version = "5", optional = true }
 hex = "0.4"
-ed25519-dalek = "2"
+ed25519-dalek = { version = "2", default-features = false, features = ["zeroize"] }
 data-encoding = "2"
-ssh-key = { version = "0.6", default-features = false, features = ["ed25519", "alloc", "std"] }
+ssh-key = { version = "0.6", default-features = false, features = ["ed25519", "alloc"] }
 pbkdf2 = { version = "0.12", features = ["hmac"] }
+
+# Argon2id в тестах иначе слишком медленный.
+[profile.test]
+opt-level = 2
+
+[profile.release]
+opt-level = "s"
+lto = true
+codegen-units = 1
