@@ -13,7 +13,13 @@
     <label for="passphrase">Passphrase (необязательно)</label>
     <input id="passphrase" type="password" autocomplete="off">
     <button id="unlock" class="primary">Разблокировать</button>
-    <button id="new-seed" class="link">Создать новую seed-фразу</button>
+    <div class="new-seed">
+      <button id="new-seed" class="link">Создать новую seed-фразу</button>
+      <select id="new-seed-words" aria-label="Число слов новой фразы">
+        <option value="12">12 слов</option>
+        <option value="24" selected>24 слова</option>
+      </select>
+    </div>
     <button id="reset-index" class="link" hidden>Удалить индекс другой seed из браузера</button>
     <div id="generated" hidden>
       <p class="warn">Запишите фразу на бумагу. Не фотографируйте и не храните её в облаке. Используйте отдельную фразу, не ту, на которой лежат криптоактивы.</p>
