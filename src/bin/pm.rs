@@ -26,7 +26,7 @@ struct Cli {
 enum Command {
     /// Создать новую seed-фразу BIP39.
     NewSeed {
-        /// Число слов: 12, 15, 18, 21 или 24.
+        /// Число слов: 12 или 24.
         #[arg(long, default_value_t = 24)]
         words: usize,
     },
@@ -149,8 +149,8 @@ fn run(cli: Cli) -> AnyResult<()> {
     let index_path = cli.index.clone().or_else(default_index_path);
     match cli.command {
         Command::NewSeed { words } => {
-            if !bip39_pm::SEED_WORD_COUNTS.contains(&words) {
-                return Err("поддерживается 12, 15, 18, 21 или 24 слова".into());
+            if !bip39_pm::NEW_SEED_WORD_COUNTS.contains(&words) {
+                return Err("новая фраза бывает из 12 или 24 слов".into());
             }
             let m = bip39::Mnemonic::generate(words)?;
             println!("{m}");

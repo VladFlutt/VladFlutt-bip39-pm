@@ -47,6 +47,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   bool _busy = false;
   late final List<String> _wordlist = bip39Wordlist();
   late final List<int> _wordCounts = seedWordCounts();
+  late final List<int> _newWordCounts = newSeedWordCounts();
 
   int get _restoreCount {
     final t = _restore.text.trim();
@@ -277,10 +278,13 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               key: const Key('word-count'),
               showSelectedIcon: false,
               segments: [
-                for (final n in _wordCounts)
+                for (final n in _newWordCounts)
                   ButtonSegment(
                     value: n,
-                    label: Text('$n', key: Key('words-$n')),
+                    label: Text(
+                      n % 10 == 4 ? '$n слова' : '$n слов',
+                      key: Key('words-$n'),
+                    ),
                   ),
               ],
               selected: {_words},
@@ -303,9 +307,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           const Hint(
             short: 'Не используйте фразу от криптокошелька с деньгами. Заведите для паролей отдельную.',
             learn:
-                'Каждые 3 слова добавляют 32 бита: 12 слов — 128 бит, этого достаточно; '
-                '18 слов — 192 бита; 24 слова — 256 бит, с запасом. На пароли длина фразы не влияет, '
-                'важно только записать её без ошибок.',
+                '12 слов дают 128 бит стойкости — этого достаточно. 24 слова — 256 бит, с запасом. '
+                'Восстановить можно и фразу из 15, 18 или 21 слова от другого приложения.',
           ),
         ];
       case _Step.showPhrase:

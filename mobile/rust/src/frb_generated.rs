@@ -40,7 +40,7 @@ flutter_rust_bridge::frb_generated_boilerplate!(
     default_rust_auto_opaque = RustAutoOpaqueMoi,
 );
 pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_VERSION: &str = "2.13.0";
-pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = 360376865;
+pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = 75273386;
 
 // Section: executor
 
@@ -675,6 +675,35 @@ fn wire__crate__api__pm__merge_index_impl(
             deserializer.end();
             transform_result_sse::<_, ()>((move || {
                 let output_ok = Ok::<_, ()>(crate::api::pm::merge_index(api_local, api_incoming))?;
+                std::result::Result::Ok(output_ok)
+            })())
+        },
+    )
+}
+fn wire__crate__api__pm__new_seed_word_counts_impl(
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "new_seed_word_counts",
+            port: None,
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            deserializer.end();
+            transform_result_sse::<_, ()>((move || {
+                let output_ok = Ok::<_, ()>(crate::api::pm::new_seed_word_counts())?;
                 std::result::Result::Ok(output_ok)
             })())
         },
@@ -1340,8 +1369,8 @@ fn pde_ffi_dispatcher_primary_impl(
         10 => wire__crate__api__pm__Vault_unlock_impl(port, ptr, rust_vec_len, data_len),
         13 => wire__crate__api__pm__index_data_default_impl(port, ptr, rust_vec_len, data_len),
         14 => wire__crate__api__pm__init_app_impl(port, ptr, rust_vec_len, data_len),
-        23 => wire__crate__api__pm__unwrap_secret_impl(port, ptr, rust_vec_len, data_len),
-        25 => wire__crate__api__pm__wrap_secret_impl(port, ptr, rust_vec_len, data_len),
+        24 => wire__crate__api__pm__unwrap_secret_impl(port, ptr, rust_vec_len, data_len),
+        26 => wire__crate__api__pm__wrap_secret_impl(port, ptr, rust_vec_len, data_len),
         _ => unreachable!(),
     }
 }
@@ -1366,16 +1395,17 @@ fn pde_ffi_dispatcher_sync_impl(
         11 => wire__crate__api__pm__bip39_wordlist_impl(ptr, rust_vec_len, data_len),
         12 => wire__crate__api__pm__generate_mnemonic_impl(ptr, rust_vec_len, data_len),
         15 => wire__crate__api__pm__merge_index_impl(ptr, rust_vec_len, data_len),
-        16 => wire__crate__api__pm__normalize_domain_impl(ptr, rust_vec_len, data_len),
-        17 => wire__crate__api__pm__normalize_label_impl(ptr, rust_vec_len, data_len),
-        18 => wire__crate__api__pm__normalize_login_impl(ptr, rust_vec_len, data_len),
-        19 => wire__crate__api__pm__password_policy_canonical_impl(ptr, rust_vec_len, data_len),
-        20 => {
+        16 => wire__crate__api__pm__new_seed_word_counts_impl(ptr, rust_vec_len, data_len),
+        17 => wire__crate__api__pm__normalize_domain_impl(ptr, rust_vec_len, data_len),
+        18 => wire__crate__api__pm__normalize_label_impl(ptr, rust_vec_len, data_len),
+        19 => wire__crate__api__pm__normalize_login_impl(ptr, rust_vec_len, data_len),
+        20 => wire__crate__api__pm__password_policy_canonical_impl(ptr, rust_vec_len, data_len),
+        21 => {
             wire__crate__api__pm__password_policy_default_policy_impl(ptr, rust_vec_len, data_len)
         }
-        21 => wire__crate__api__pm__secret_size_bounds_impl(ptr, rust_vec_len, data_len),
-        22 => wire__crate__api__pm__seed_word_counts_impl(ptr, rust_vec_len, data_len),
-        24 => wire__crate__api__license__verify_pro_key_impl(ptr, rust_vec_len, data_len),
+        22 => wire__crate__api__pm__secret_size_bounds_impl(ptr, rust_vec_len, data_len),
+        23 => wire__crate__api__pm__seed_word_counts_impl(ptr, rust_vec_len, data_len),
+        25 => wire__crate__api__license__verify_pro_key_impl(ptr, rust_vec_len, data_len),
         _ => unreachable!(),
     }
 }

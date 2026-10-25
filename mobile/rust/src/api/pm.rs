@@ -273,7 +273,7 @@ pub struct Derived {
     pub check_words: String,
 }
 
-/// Допустимое число слов seed-фразы: 12, 15, 18, 21, 24.
+/// Допустимое число слов seed-фразы при восстановлении: 12, 15, 18, 21, 24.
 #[frb(sync)]
 pub fn seed_word_counts() -> Vec<u32> {
     bip39_pm::SEED_WORD_COUNTS
@@ -282,11 +282,20 @@ pub fn seed_word_counts() -> Vec<u32> {
         .collect()
 }
 
-/// Новая seed-фраза BIP39 из 12, 15, 18, 21 или 24 слов.
+/// Число слов новой фразы: 12 или 24.
+#[frb(sync)]
+pub fn new_seed_word_counts() -> Vec<u32> {
+    bip39_pm::NEW_SEED_WORD_COUNTS
+        .iter()
+        .map(|&n| n as u32)
+        .collect()
+}
+
+/// Новая seed-фраза BIP39 из 12 или 24 слов.
 #[frb(sync)]
 pub fn generate_mnemonic(words: u32) -> Result<String> {
-    if !bip39_pm::SEED_WORD_COUNTS.contains(&(words as usize)) {
-        bail!("поддерживается 12, 15, 18, 21 или 24 слова");
+    if !bip39_pm::NEW_SEED_WORD_COUNTS.contains(&(words as usize)) {
+        bail!("новая фраза бывает из 12 или 24 слов");
     }
     Ok(bip39::Mnemonic::generate(words as usize)?.to_string())
 }
@@ -480,12 +489,14 @@ mod tests {
 
     #[test]
     fn mnemonic_generation() {
-        for n in seed_word_counts() {
+        for n in new_seed_word_counts() {
             let m = generate_mnemonic(n).unwrap();
             assert_eq!(m.split(' ').count(), n as usize);
             assert!(Vault::unlock(m, String::new()).is_ok());
         }
         assert!(generate_mnemonic(13).is_err());
+        assert!(generate_mnemonic(18).is_err());
+        assert_eq!(seed_word_counts(), vec![12, 15, 18, 21, 24]);
         assert!(generate_mnemonic(27).is_err());
         assert_eq!(bip39_wordlist().len(), 2048);
     }

@@ -37,10 +37,14 @@ Future<Uint8List> unwrapSecret({
   required String code,
 }) => RustLib.instance.api.crateApiPmUnwrapSecret(blob: blob, code: code);
 
-/// Допустимое число слов seed-фразы: 12, 15, 18, 21, 24.
+/// Допустимое число слов seed-фразы при восстановлении: 12, 15, 18, 21, 24.
 Uint32List seedWordCounts() => RustLib.instance.api.crateApiPmSeedWordCounts();
 
-/// Новая seed-фраза BIP39 из 12, 15, 18, 21 или 24 слов.
+/// Число слов новой фразы: 12 или 24.
+Uint32List newSeedWordCounts() =>
+    RustLib.instance.api.crateApiPmNewSeedWordCounts();
+
+/// Новая seed-фраза BIP39 из 12 или 24 слов.
 String generateMnemonic({required int words}) =>
     RustLib.instance.api.crateApiPmGenerateMnemonic(words: words);
 
