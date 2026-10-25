@@ -43,6 +43,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   String? _error;
   bool _busy = false;
   late final List<String> _wordlist = bip39Wordlist();
+  late final List<int> _wordCounts = seedWordCounts();
+
+  int get _restoreCount {
+    final t = _restore.text.trim();
+    return t.isEmpty ? 0 : t.split(RegExp(r'\s+')).length;
+  }
 
   List<_Step> get _steps => [
     _Step.welcome,
@@ -88,8 +94,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     _Step.verify => _verifyPositions.every(
       (p) => _verify[p]!.text.trim().toLowerCase() == _phrase.split(' ')[p],
     ),
-    _Step.enterPhrase =>
-      _restore.text.trim().split(RegExp(r'\s+')).length >= 12,
+    _Step.enterPhrase => _wordCounts.contains(_restoreCount),
     _Step.passphrase => _pass1.text == _pass2.text,
     _ => !_busy,
   };
@@ -220,7 +225,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           const Hint(
             short: 'Потеряли телефон? Установите ManagerBIP заново, введите ту же фразу, и все пароли вернутся.',
             learn:
-                'Seed-фраза BIP39 — это 12 или 24 слова из словаря на 2048 слов. Из неё по стандарту BIP85 '
+                'Seed-фраза BIP39 — это от 12 до 24 слов из словаря на 2048 слов. Из неё по стандарту BIP85 '
                 'выводится отдельный ключ приложения, а из него через HKDF — пароль для каждого сайта. '
                 'Утечка одного пароля не раскрывает ни фразу, ни другие пароли.',
           ),
@@ -250,10 +255,17 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           ),
           if (_path == _Path.create) ...[
             const SizedBox(height: 8),
+            const Text('Сколько слов во фразе'),
+            const SizedBox(height: 8),
             SegmentedButton<int>(
-              segments: const [
-                ButtonSegment(value: 12, label: Text('12 слов')),
-                ButtonSegment(value: 24, label: Text('24 слова')),
+              key: const Key('word-count'),
+              showSelectedIcon: false,
+              segments: [
+                for (final n in _wordCounts)
+                  ButtonSegment(
+                    value: n,
+                    label: Text('$n', key: Key('words-$n')),
+                  ),
               ],
               selected: {_words},
               onSelectionChanged: (s) => setState(() => _words = s.first),
@@ -268,7 +280,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             ),
           const Hint(
             short: 'Не используйте фразу от криптокошелька с деньгами. Заведите для паролей отдельную.',
-            learn: '12 слов дают 128 бит стойкости — этого достаточно. 24 слова — 256 бит, с запасом.',
+            learn:
+                'Каждые 3 слова добавляют 32 бита: 12 слов — 128 бит, этого достаточно; '
+                '18 слов — 192 бита; 24 слова — 256 бит, с запасом. На пароли длина фразы не влияет, '
+                'важно только записать её без ошибок.',
           ),
         ];
       case _Step.showPhrase:
@@ -373,7 +388,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             ],
           ),
           Text(
-            'Слов: ${_restore.text.trim().isEmpty ? 0 : _restore.text.trim().split(RegExp(r'\s+')).length}',
+            'Слов: $_restoreCount (бывает ${_wordCounts.join(', ')})',
+            key: const Key('restore-count'),
           ),
           const Hint(
             short: 'Порядок слов важен. Регистр и лишние пробелы не важны.',

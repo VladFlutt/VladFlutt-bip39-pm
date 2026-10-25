@@ -3,6 +3,7 @@
 
 // ignore_for_file: unused_import, unused_element, unnecessary_import, duplicate_ignore, invalid_use_of_internal_member, annotate_overrides, non_constant_identifier_names, curly_braces_in_flow_control_structures, prefer_const_literals_to_create_immutables, unused_field
 
+import 'api/license.dart';
 import 'api/pm.dart';
 
 import 'dart:async';
@@ -69,7 +70,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.13.0';
 
   @override
-  int get rustContentHash => 816799847;
+  int get rustContentHash => -269137201;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -123,6 +124,10 @@ abstract class RustLibApi extends BaseApi {
   String crateApiPmPasswordPolicyCanonical({required PasswordPolicy that});
 
   PasswordPolicy crateApiPmPasswordPolicyDefaultPolicy();
+
+  Uint32List crateApiPmSeedWordCounts();
+
+  ProLicense crateApiLicenseVerifyProKey({required String key});
 
   RustArcIncrementStrongCountFnType get rust_arc_increment_strong_count_Vault;
 
@@ -523,6 +528,51 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         argNames: [],
       );
 
+  @override
+  Uint32List crateApiPmSeedWordCounts() {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 15)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_list_prim_u_32_strict,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiPmSeedWordCountsConstMeta,
+        argValues: [],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiPmSeedWordCountsConstMeta =>
+      const TaskConstMeta(debugName: "seed_word_counts", argNames: []);
+
+  @override
+  ProLicense crateApiLicenseVerifyProKey({required String key}) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(key, serializer);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 16)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_pro_license,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiLicenseVerifyProKeyConstMeta,
+        argValues: [key],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiLicenseVerifyProKeyConstMeta =>
+      const TaskConstMeta(debugName: "verify_pro_key", argNames: ["key"]);
+
   RustArcIncrementStrongCountFnType
   get rust_arc_increment_strong_count_Vault => wire
       .rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerVault;
@@ -625,6 +675,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  Uint32List dco_decode_list_prim_u_32_strict(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw as Uint32List;
+  }
+
+  @protected
   List<int> dco_decode_list_prim_u_8_loose(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw as List<int>;
@@ -654,6 +710,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       upper: dco_decode_bool(arr[2]),
       digits: dco_decode_bool(arr[3]),
       symbols: dco_decode_bool(arr[4]),
+    );
+  }
+
+  @protected
+  ProLicense dco_decode_pro_license(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 2)
+      throw Exception('unexpected arr length: expect 2 but see ${arr.length}');
+    return ProLicense(
+      serial: dco_decode_u_32(arr[0]),
+      issued: dco_decode_String(arr[1]),
     );
   }
 
@@ -804,6 +872,13 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  Uint32List sse_decode_list_prim_u_32_strict(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var len_ = sse_decode_i_32(deserializer);
+    return deserializer.buffer.getUint32List(len_);
+  }
+
+  @protected
   List<int> sse_decode_list_prim_u_8_loose(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var len_ = sse_decode_i_32(deserializer);
@@ -843,6 +918,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       digits: var_digits,
       symbols: var_symbols,
     );
+  }
+
+  @protected
+  ProLicense sse_decode_pro_license(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_serial = sse_decode_u_32(deserializer);
+    var var_issued = sse_decode_String(deserializer);
+    return ProLicense(serial: var_serial, issued: var_issued);
   }
 
   @protected
@@ -982,6 +1065,16 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_list_prim_u_32_strict(
+    Uint32List self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    serializer.buffer.putUint32List(self);
+  }
+
+  @protected
   void sse_encode_list_prim_u_8_loose(
     List<int> self,
     SseSerializer serializer,
@@ -1024,6 +1117,13 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_bool(self.upper, serializer);
     sse_encode_bool(self.digits, serializer);
     sse_encode_bool(self.symbols, serializer);
+  }
+
+  @protected
+  void sse_encode_pro_license(ProLicense self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_u_32(self.serial, serializer);
+    sse_encode_String(self.issued, serializer);
   }
 
   @protected

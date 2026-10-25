@@ -1,9 +1,11 @@
 import 'package:flutter/foundation.dart';
 
-import '../rust/api/pm.dart';
 import '../services/biometric.dart';
 import '../services/index_store.dart';
+import '../rust/api/license.dart';
+import '../rust/api/pm.dart';
 import '../services/key_store.dart';
+import '../services/license_store.dart';
 
 /// Режим, который пользователь выбирает при запуске.
 enum AppMode {
@@ -24,11 +26,13 @@ class AppState extends ChangeNotifier {
   final KeyStore Function(AppMode) keyStoreFor;
   final IndexStore Function(AppMode) indexStoreFor;
   final Biometric biometric;
+  final LicenseStore licenseStore;
 
   AppState({
     required this.keyStoreFor,
     required this.indexStoreFor,
     required this.biometric,
+    required this.licenseStore,
   });
 
   /// Хранилища по умолчанию: настоящие для обычного режима, в памяти — для учебного.
@@ -39,6 +43,7 @@ class AppState extends ChangeNotifier {
       keyStoreFor: (m) => m == AppMode.normal ? SecureKeyStore() : learnKeys,
       indexStoreFor: (m) => m == AppMode.normal ? FileIndexStore() : learnIndex,
       biometric: DeviceBiometric(),
+      licenseStore: SecureLicenseStore(),
     );
   }
 
@@ -48,9 +53,14 @@ class AppState extends ChangeNotifier {
   List<Account> accounts = [];
   String? error;
 
+  /// Активированный ключ Pro, `null` — бесплатная версия.
+  ProLicense? pro;
+
   bool get learning => mode == AppMode.learning;
   Vault get vault => _vault!;
   String get fingerprint => _vault?.fingerprint() ?? '';
+
+  bool get isPro => pro != null;
 
   KeyStore get _keys => keyStoreFor(mode);
   IndexStore get _index => indexStoreFor(mode);
@@ -61,6 +71,27 @@ class AppState extends ChangeNotifier {
     notifyListeners();
     final stored = await _keys.read();
     phase = stored == null ? Phase.onboarding : Phase.locked;
+    notifyListeners();
+  }
+
+  /// Проверяет сохранённый ключ Pro при запуске. Отозванный ключ снимается.
+  Future<void> loadPro() async {
+    final key = await licenseStore.read();
+    if (key == null) return;
+    try {
+      pro = verifyProKey(key: key);
+    } catch (_) {
+      pro = null;
+      await licenseStore.clear();
+    }
+    notifyListeners();
+  }
+
+  /// Активирует ключ Pro. Бросает исключение с текстом ошибки, если ключ не подошёл.
+  Future<void> activatePro(String key) async {
+    final lic = verifyProKey(key: key);
+    await licenseStore.write(key.trim());
+    pro = lic;
     notifyListeners();
   }
 

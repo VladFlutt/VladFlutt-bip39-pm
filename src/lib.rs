@@ -40,4 +40,7 @@ impl std::fmt::Display for Error {
 
 impl std::error::Error for Error {}
 
+/// Допустимая длина seed-фразы BIP39: 128–256 бит энтропии с шагом 32.
+pub const SEED_WORD_COUNTS: [usize; 5] = [12, 15, 18, 21, 24];
+
 pub type Result<T> = std::result::Result<T, Error>;

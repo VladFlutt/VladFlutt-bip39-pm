@@ -9,7 +9,10 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
 // These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_fields_are_eq`, `assert_fields_are_eq`, `clone`, `clone`, `clone`, `eq`, `eq`, `fmt`, `fmt`, `fmt`, `from`, `from`, `from`, `from`
 
-/// Новая seed-фраза BIP39 из 12 или 24 слов.
+/// Допустимое число слов seed-фразы: 12, 15, 18, 21, 24.
+Uint32List seedWordCounts() => RustLib.instance.api.crateApiPmSeedWordCounts();
+
+/// Новая seed-фраза BIP39 из 12, 15, 18, 21 или 24 слов.
 String generateMnemonic({required int words}) =>
     RustLib.instance.api.crateApiPmGenerateMnemonic(words: words);
 

@@ -15,6 +15,9 @@
 
 ## Каналы оплаты
 
+На старте Pro продаётся только ключами `MBIP-…`: Ozon, Wildberries и сайт.
+Покупки внутри App Store, Google Play и RuStore подключаются позже.
+
 | Канал | Рынок | Как открывается Pro |
 |---|---|---|
 | App Store, In-App Purchase (non-consumable) | международный | чек StoreKit 2, проверка на устройстве |

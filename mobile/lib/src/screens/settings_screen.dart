@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../state/app_scope.dart';
 import '../ui/hint.dart';
 import '../ui/wallpaper.dart';
+import 'pro_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -47,6 +48,21 @@ class SettingsScreen extends StatelessWidget {
         body: ListView(
           padding: const EdgeInsets.all(16),
           children: [
+            ListTile(
+              key: const Key('open-pro'),
+              leading: Icon(
+                state.isPro ? Icons.verified : Icons.workspace_premium_outlined,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+              title: const Text('ManagerBIP Pro'),
+              subtitle: Text(
+                state.isPro ? 'Активирован' : 'Ввести или купить ключ',
+              ),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(builder: (_) => const ProScreen()),
+              ),
+            ),
             ListTile(
               leading: const Icon(Icons.fingerprint),
               title: const Text('Отпечаток seed'),
