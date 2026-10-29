@@ -3,8 +3,10 @@ import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 
+import '../config.dart';
 import '../rust/api/license.dart';
 import '../rust/api/pm.dart';
+import '../services/billing.dart';
 import '../services/biometric.dart';
 import '../services/index_store.dart';
 import '../services/key_store.dart';
@@ -55,6 +57,7 @@ class AppState extends ChangeNotifier {
   final Biometric biometric;
   final LicenseStore licenseStore;
   final LangStore langStore;
+  final ProBilling billing;
 
   AppState({
     required this.keyStoreFor,
@@ -62,7 +65,11 @@ class AppState extends ChangeNotifier {
     required this.biometric,
     required this.licenseStore,
     LangStore? langStore,
-  }) : langStore = langStore ?? MemoryLangStore();
+    ProBilling? billing,
+  }) : langStore = langStore ?? MemoryLangStore(),
+       billing = billing ?? NoBilling() {
+    this.billing.addListener(notifyListeners);
+  }
 
   /// Хранилища по умолчанию: настоящие для обычного режима, в памяти — для учебного.
   factory AppState.device() {
@@ -74,6 +81,7 @@ class AppState extends ChangeNotifier {
       biometric: DeviceBiometric(),
       licenseStore: SecureLicenseStore(),
       langStore: SecureLangStore(),
+      billing: store == 'play' ? PlayBilling() : NoBilling(),
     );
   }
 
@@ -107,7 +115,7 @@ class AppState extends ChangeNotifier {
   ProLicense? pro;
 
   bool get learning => mode == AppMode.learning;
-  bool get isPro => pro != null;
+  bool get isPro => pro != null || billing.owned;
 
   /// Pro-функции доступны с ключом и бесплатно в учебном режиме — для пробы.
   bool get proActive => isPro || learning;
@@ -124,8 +132,14 @@ class AppState extends ChangeNotifier {
   KeyStore get _keys => keyStoreFor(mode);
   IndexStore get _index => indexStoreFor(mode);
 
-  /// Проверяет сохранённый ключ Pro при запуске. Отозванный ключ снимается.
+  /// Проверяет сохранённый ключ Pro и покупку в магазине при запуске.
+  /// Отозванный ключ снимается.
   Future<void> loadPro() async {
+    try {
+      await billing.init();
+    } catch (_) {
+      // Без магазина остаётся ключ.
+    }
     final key = await licenseStore.read();
     if (key == null) return;
     try {
