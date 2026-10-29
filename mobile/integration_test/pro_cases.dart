@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mobile/src/app.dart';
 import 'package:mobile/src/rust/api/pm.dart';
+import 'package:mobile/src/services/billing.dart';
 import 'package:mobile/src/services/biometric.dart';
 import 'package:mobile/src/services/index_store.dart';
 import 'package:mobile/src/services/key_store.dart';
@@ -13,7 +14,7 @@ import 'package:mobile/src/state/app_state.dart';
 /// Вызывается из `app_test.dart`: на Linux несколько файлов интеграционных тестов
 /// подряд не запускаются, поэтому файл с тестами один.
 void proCases() {
-  AppState memoryState() {
+  AppState memoryState({ProBilling? billing}) {
     final keys = MemoryKeyStore();
     final index = MemoryIndexStore();
     return AppState(
@@ -21,6 +22,7 @@ void proCases() {
       indexStoreFor: (_) => index,
       biometric: NoBiometric(),
       licenseStore: MemoryLicenseStore(),
+      billing: billing,
     );
   }
 
@@ -112,6 +114,27 @@ void proCases() {
     expect(find.byKey(const Key('pro-more')), findsOneWidget);
     await tapKey(t, 'pro-more');
     expect(find.text('ManagerBIP Pro'), findsOneWidget);
+  });
+
+  testWidgets('Play-сборка: покупка Pro в магазине', (t) async {
+    final state = memoryState(billing: FakeBilling());
+    await t.pumpWidget(ManagerBipApp(state: state));
+    await t.pumpAndSettle();
+    await tapKey(t, 'mode-normal');
+    await tapKey(t, 'next');
+    await tapKey(t, 'next'); // создать
+    await tapKey(t, 'written');
+    final v = await state.previewVault(demoMnemonic, '');
+    await state.completeOnboarding(v);
+    await t.pumpAndSettle();
+
+    await tapKey(t, 'tab-secrets');
+    await tapKey(t, 'add');
+    await tapKey(t, 'pro-more');
+    await tapKey(t, 'pro-buy');
+    expect(state.proActive, isTrue);
+    expect(find.text('Pro активирован'), findsOneWidget);
+    expect(find.byKey(const Key('pro-buy')), findsNothing);
   });
 
   testWidgets('секреты: PIN по вектору SPEC и ключ SSH', (t) async {

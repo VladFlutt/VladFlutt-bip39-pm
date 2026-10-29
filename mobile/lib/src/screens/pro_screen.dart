@@ -69,6 +69,8 @@ class _ProScreenState extends State<ProScreen> {
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
     final pro = state.pro;
+    final isPro = state.isPro;
+    final billing = state.billing;
     final shops = proShops.where((s) => s.url.isNotEmpty).toList();
     return CryptoWallpaper(
       child: Scaffold(
@@ -81,28 +83,28 @@ class _ProScreenState extends State<ProScreen> {
           padding: const EdgeInsets.all(16),
           children: [
             Card(
-              color: pro != null ? scheme.primaryContainer : null,
+              color: isPro ? scheme.primaryContainer : null,
               child: ListTile(
                 key: const Key('pro-status'),
                 leading: Icon(
-                  pro != null
-                      ? Icons.verified
-                      : Icons.workspace_premium_outlined,
+                  isPro ? Icons.verified : Icons.workspace_premium_outlined,
                   color: scheme.primary,
                 ),
                 title: Text(
-                  pro != null ? tr('Pro активирован') : tr('Бесплатная версия'),
+                  isPro ? tr('Pro активирован') : tr('Бесплатная версия'),
                 ),
                 subtitle: Text(
                   pro != null
                       ? tr('Ключ №{0}, выпущен {1}', [pro.serial, pro.issued])
+                      : isPro
+                      ? tr('Куплено в Google Play')
                       : tr(
                           'Разовая покупка, без подписки. Пароли бесплатны всегда.',
                         ),
                 ),
               ),
             ),
-            if (pro == null && state.learning)
+            if (!isPro && state.learning)
               Hint(
                 short: tr(
                   'В учебном режиме все функции Pro открыты: попробуйте их на тестовой фразе.',
@@ -129,8 +131,27 @@ class _ProScreenState extends State<ProScreen> {
                 'Ключ Pro проверяется прямо на телефоне, без интернета и без аккаунта. После переустановки введите тот же ключ ещё раз.',
               ),
             ),
-            if (pro == null) ...[
+            if (!isPro) ...[
               const Divider(height: 32),
+              if (billing.available) ...[
+                if (billing.price != null)
+                  FilledButton.icon(
+                    key: const Key('pro-buy'),
+                    icon: const Icon(Icons.shopping_cart_outlined),
+                    label: Text(tr('Купить за {0}', [billing.price])),
+                    onPressed: billing.busy ? null : billing.buy,
+                  )
+                else
+                  Text(tr('Покупка в Google Play сейчас недоступна.')),
+                TextButton(
+                  key: const Key('pro-restore'),
+                  onPressed: billing.busy ? null : billing.restore,
+                  child: Text(tr('Восстановить покупку')),
+                ),
+                if (billing.error != null)
+                  Text(billing.error!, style: TextStyle(color: scheme.error)),
+                const SizedBox(height: 24),
+              ],
               // В Play-сборке без раздела о покупке: см. config.dart.
               if (store != 'play') ...[
                 Text(tr('Купить ключ'), style: text.titleMedium),
