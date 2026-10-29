@@ -6,6 +6,7 @@ import '../rust/api/pm.dart';
 import '../state/app_scope.dart';
 import '../state/app_state.dart';
 import '../ui/hint.dart';
+import '../l10n/tr.dart';
 
 enum _Path { create, restore }
 
@@ -122,8 +123,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         setState(() {
           _busy = false;
           _error = _path == _Path.restore
-              ? 'Фраза не прошла проверку: опечатка в слове или неверный порядок. ($e)'
-              : '$e';
+              ? tr(
+                  'Фраза не прошла проверку: опечатка в слове или неверный порядок. ({0})',
+                  [trError(e)],
+                )
+              : trError(e);
         });
         return;
       }
@@ -165,10 +169,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         backgroundColor: Colors.transparent,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          tooltip: 'Назад',
+          tooltip: tr('Назад'),
           onPressed: _back,
         ),
-        title: Text('Шаг ${_index + 1} из ${steps.length}'),
+        title: Text(tr('Шаг {0} из {1}', [_index + 1, steps.length])),
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(4),
           child: LinearProgressIndicator(value: (_index + 1) / steps.length),
@@ -212,7 +216,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                               dimension: 20,
                               child: CircularProgressIndicator(strokeWidth: 2),
                             )
-                          : Text(_last ? 'Готово' : 'Далее'),
+                          : Text(_last ? tr('Готово') : tr('Далее')),
                     ),
                   ),
                 ),
@@ -234,45 +238,49 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     switch (_step) {
       case _Step.welcome:
         return [
-          title('Добро пожаловать в ManagerBIP'),
-          const Text(
-            'ManagerBIP не хранит пароли. Он каждый раз вычисляет их из вашей seed-фразы, '
-            'адреса сайта и логина. Одна фраза — пароли для всех сайтов, на любом устройстве.',
+          title(tr('Добро пожаловать в ManagerBIP')),
+          Text(
+            tr(
+              'ManagerBIP не хранит пароли. Он каждый раз вычисляет их из вашей seed-фразы, адреса сайта и логина. Одна фраза — пароли для всех сайтов, на любом устройстве.',
+            ),
           ),
-          const Hint(
-            short: 'Потеряли телефон? Установите ManagerBIP заново, введите ту же фразу, и все пароли вернутся.',
-            learn:
-                'Seed-фраза BIP39 — это от 12 до 24 слов из словаря на 2048 слов. Из неё по стандарту BIP85 '
-                'выводится отдельный ключ приложения, а из него через HKDF — пароль для каждого сайта. '
-                'Утечка одного пароля не раскрывает ни фразу, ни другие пароли.',
+          Hint(
+            short: tr(
+              'Потеряли телефон? Установите ManagerBIP заново, введите ту же фразу, и все пароли вернутся.',
+            ),
+            learn: tr(
+              'Seed-фраза BIP39 — это от 12 до 24 слов из словаря на 2048 слов. Из неё по стандарту BIP85 выводится отдельный ключ приложения, а из него через HKDF — пароль для каждого сайта. Утечка одного пароля не раскрывает ни фразу, ни другие пароли.',
+            ),
           ),
         ];
       case _Step.choose:
         return [
-          title(_adding ? 'Фраза нового профиля' : 'У вас уже есть фраза?'),
+          title(
+            _adding ? tr('Фраза нового профиля') : tr('У вас уже есть фраза?'),
+          ),
           RadioGroup<_Path>(
             groupValue: _path,
             onChanged: (v) => setState(() => _path = v!),
-            child: const Column(
+            child: Column(
               children: [
                 RadioListTile(
                   key: Key('path-create'),
                   value: _Path.create,
-                  title: Text('Создать новую фразу'),
-                  subtitle: Text('Первый запуск ManagerBIP'),
+                  title: Text(tr('Создать новую фразу')),
+                  subtitle: Text(tr('Первый запуск ManagerBIP')),
                 ),
                 RadioListTile(
                   key: Key('path-restore'),
                   value: _Path.restore,
-                  title: Text('Восстановить по фразе'),
-                  subtitle: Text('Новый телефон или переустановка'),
+                  title: Text(tr('Восстановить по фразе')),
+                  subtitle: Text(tr('Новый телефон или переустановка')),
                 ),
               ],
             ),
           ),
           if (_path == _Path.create) ...[
             const SizedBox(height: 8),
-            const Text('Сколько слов во фразе'),
+            Text(tr('Сколько слов во фразе')),
             const SizedBox(height: 8),
             SegmentedButton<int>(
               key: const Key('word-count'),
@@ -282,7 +290,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   ButtonSegment(
                     value: n,
                     label: Text(
-                      n % 10 == 4 ? '$n слова' : '$n слов',
+                      n % 10 == 4 ? tr('{0} слова', [n]) : tr('{0} слов', [n]),
                       key: Key('words-$n'),
                     ),
                   ),
@@ -295,26 +303,28 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             OutlinedButton.icon(
               key: const Key('use-demo'),
               icon: const Icon(Icons.auto_fix_high),
-              label: const Text('Подставить учебную фразу'),
+              label: Text(tr('Подставить учебную фразу')),
               onPressed: () => setState(() => _restore.text = demoMnemonic),
             ),
           if (_adding)
-            const Hint(
-              short:
-                  'Та же фраза с другой passphrase — тоже отдельный профиль: выберите '
-                  '«Восстановить», введите свою фразу и новую passphrase.',
+            Hint(
+              short: tr(
+                'Та же фраза с другой passphrase — тоже отдельный профиль: выберите «Восстановить», введите свою фразу и новую passphrase.',
+              ),
             ),
-          const Hint(
-            short: 'Не используйте фразу от криптокошелька с деньгами. Заведите для паролей отдельную.',
-            learn:
-                '12 слов дают 128 бит стойкости — этого достаточно. 24 слова — 256 бит, с запасом. '
-                'Восстановить можно и фразу из 15, 18 или 21 слова от другого приложения.',
+          Hint(
+            short: tr(
+              'Не используйте фразу от криптокошелька с деньгами. Заведите для паролей отдельную.',
+            ),
+            learn: tr(
+              '12 слов дают 128 бит стойкости — этого достаточно. 24 слова — 256 бит, с запасом. Восстановить можно и фразу из 15, 18 или 21 слова от другого приложения.',
+            ),
           ),
         ];
       case _Step.showPhrase:
         final words = _phrase.split(' ');
         return [
-          title('Запишите фразу на бумагу'),
+          title(tr('Запишите фразу на бумагу')),
           Card(
             child: Padding(
               padding: const EdgeInsets.all(12),
@@ -334,20 +344,22 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             key: const Key('written'),
             value: _written,
             onChanged: (v) => setState(() => _written = v ?? false),
-            title: const Text('Фраза записана на бумагу'),
+            title: Text(tr('Фраза записана на бумагу')),
             controlAffinity: ListTileControlAffinity.leading,
           ),
-          const Hint(
-            short: 'Не фотографируйте фразу и не храните её в заметках или облаке.',
-            learn:
-                'Кто знает фразу, знает все ваши пароли. ManagerBIP не сохраняет фразу на телефоне, '
-                'поэтому бумажная копия — единственный способ восстановить доступ.',
+          Hint(
+            short: tr(
+              'Не фотографируйте фразу и не храните её в заметках или облаке.',
+            ),
+            learn: tr(
+              'Кто знает фразу, знает все ваши пароли. ManagerBIP не сохраняет фразу на телефоне, поэтому бумажная копия — единственный способ восстановить доступ.',
+            ),
           ),
         ];
       case _Step.verify:
         return [
-          title('Проверим запись'),
-          const Text('Введите слова с этими номерами.'),
+          title(tr('Проверим запись')),
+          Text(tr('Введите слова с этими номерами.')),
           const SizedBox(height: 12),
           for (final p in _verifyPositions)
             Padding(
@@ -358,14 +370,16 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 autocorrect: false,
                 enableSuggestions: false,
                 decoration: InputDecoration(
-                  labelText: 'Слово №${p + 1}',
+                  labelText: tr('Слово №{0}', [p + 1]),
                   border: const OutlineInputBorder(),
                 ),
                 onChanged: (_) => setState(() {}),
               ),
             ),
-          const Hint(
-            learn: 'Так мы убеждаемся, что фраза записана без ошибок, пока её ещё видно на экране.',
+          Hint(
+            learn: tr(
+              'Так мы убеждаемся, что фраза записана без ошибок, пока её ещё видно на экране.',
+            ),
           ),
         ];
       case _Step.enterPhrase:
@@ -381,7 +395,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   .take(6)
                   .toList();
         return [
-          title('Введите вашу фразу'),
+          title(tr('Введите вашу фразу')),
           TextField(
             key: const Key('restore-phrase'),
             controller: _restore,
@@ -389,8 +403,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             maxLines: 5,
             autocorrect: false,
             enableSuggestions: false,
-            decoration: const InputDecoration(
-              hintText: 'слова через пробел',
+            decoration: InputDecoration(
+              hintText: tr('слова через пробел'),
               border: OutlineInputBorder(),
             ),
             onChanged: (_) => setState(() {}),
@@ -413,17 +427,22 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             ],
           ),
           Text(
-            'Слов: $_restoreCount (бывает ${_wordCounts.join(', ')})',
+            tr('Слов: {0} (бывает {1})', [
+              _restoreCount,
+              _wordCounts.join(', '),
+            ]),
             key: const Key('restore-count'),
           ),
-          const Hint(
-            short: 'Порядок слов важен. Регистр и лишние пробелы не важны.',
-            learn: 'Последнее слово содержит контрольную сумму, поэтому опечатку ManagerBIP почти всегда заметит сам.',
+          Hint(
+            short: tr('Порядок слов важен. Регистр и лишние пробелы не важны.'),
+            learn: tr(
+              'Последнее слово содержит контрольную сумму, поэтому опечатку ManagerBIP почти всегда заметит сам.',
+            ),
           ),
         ];
       case _Step.passphrase:
         return [
-          title('Passphrase (необязательно)'),
+          title(tr('Passphrase (необязательно)')),
           TextField(
             key: const Key('pass1'),
             controller: _pass1,
@@ -440,22 +459,24 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             controller: _pass2,
             obscureText: true,
             decoration: InputDecoration(
-              labelText: 'Повторите passphrase',
+              labelText: tr('Повторите passphrase'),
               border: const OutlineInputBorder(),
-              errorText: _pass1.text == _pass2.text ? null : 'Не совпадает',
+              errorText: _pass1.text == _pass2.text ? null : tr('Не совпадает'),
             ),
             onChanged: (_) => setState(() {}),
           ),
-          const Hint(
-            short: 'Оставьте пустым, если не уверены. Без той же passphrase пароли будут другими.',
-            learn:
-                'Passphrase — «25-е слово». С ней одна бумажная фраза даёт совсем другой набор паролей. '
-                'Это защищает, если бумажку найдут, но passphrase тоже нельзя забыть.',
+          Hint(
+            short: tr(
+              'Оставьте пустым, если не уверены. Без той же passphrase пароли будут другими.',
+            ),
+            learn: tr(
+              'Passphrase — «25-е слово». С ней одна бумажная фраза даёт совсем другой набор паролей. Это защищает, если бумажку найдут, но passphrase тоже нельзя забыть.',
+            ),
           ),
         ];
       case _Step.fingerprint:
         return [
-          title('Отпечаток вашей фразы'),
+          title(tr('Отпечаток вашей фразы')),
           Card(
             child: Padding(
               padding: const EdgeInsets.all(24),
@@ -467,33 +488,41 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               ),
             ),
           ),
-          const Hint(
-            short: 'Запомните эти три слова. Их можно хранить где угодно: они не раскрывают фразу.',
-            learn:
-                'При восстановлении на новом телефоне ManagerBIP покажет отпечаток снова. '
-                'Если слова другие — значит, во фразе или passphrase ошибка, и пароли тоже будут другими.',
+          Hint(
+            short: tr(
+              'Запомните эти три слова. Их можно хранить где угодно: они не раскрывают фразу.',
+            ),
+            learn: tr(
+              'При восстановлении на новом телефоне ManagerBIP покажет отпечаток снова. Если слова другие — значит, во фразе или passphrase ошибка, и пароли тоже будут другими.',
+            ),
           ),
         ];
       case _Step.protect:
         return [
-          title('Защита на этом телефоне'),
-          const ListTile(
+          title(tr('Защита на этом телефоне')),
+          ListTile(
             leading: Icon(Icons.fingerprint),
-            title: Text('Вход по Face ID, отпечатку или коду устройства'),
+            title: Text(tr('Вход по Face ID, отпечатку или коду устройства')),
           ),
-          const ListTile(
+          ListTile(
             leading: Icon(Icons.visibility_off_outlined),
-            title: Text('Скриншоты экрана запрещены'),
+            title: Text(tr('Скриншоты экрана запрещены')),
           ),
-          const ListTile(
+          ListTile(
             leading: Icon(Icons.timer_outlined),
             title: Text(
-              'Скопированный пароль стирается из буфера через 30 секунд',
+              tr('Скопированный пароль стирается из буфера через 30 секунд'),
             ),
           ),
           Hint(
-            short: learning ? null : 'Фраза не сохраняется на телефоне. В защищённом хранилище остаётся только ключ приложения.',
-            learn: 'В учебном режиме ключ живёт только в памяти и исчезнет, когда вы закроете приложение.',
+            short: learning
+                ? null
+                : tr(
+                    'Фраза не сохраняется на телефоне. В защищённом хранилище остаётся только ключ приложения.',
+                  ),
+            learn: tr(
+              'В учебном режиме ключ живёт только в памяти и исчезнет, когда вы закроете приложение.',
+            ),
           ),
         ];
     }

@@ -124,7 +124,7 @@ void proCases() {
     expect(find.text('5987'), findsOneWidget);
     await tapKey(t, 'secret-save');
     expect(state.secrets.single.label, 'карта');
-    await t.pageBack();
+    await t.tap(find.byType(BackButton));
     await t.pumpAndSettle();
     expect(find.text('карта'), findsOneWidget);
 
@@ -147,7 +147,7 @@ void proCases() {
     await tapKey(t, 'template-Без символов');
     await tapKey(t, 'default-save');
     expect(state.newSitePolicy.symbols, isFalse);
-    await t.pageBack();
+    await t.tap(find.byType(BackButton));
     await t.pumpAndSettle();
 
     await tapKey(t, 'add');
@@ -199,7 +199,7 @@ void proCases() {
     t
         .state<ScaffoldMessengerState>(find.byType(ScaffoldMessenger))
         .removeCurrentSnackBar();
-    await t.pageBack();
+    await t.tap(find.byType(BackButton));
     await t.pumpAndSettle();
     await tapKey(t, 'open-transfer');
     final other = memoryState();

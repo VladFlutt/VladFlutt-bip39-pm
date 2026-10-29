@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../screens/pro_screen.dart';
 import '../state/app_scope.dart';
+import '../l10n/tr.dart';
 
 /// Пропускает к Pro-функции или предлагает открыть экран Pro. `true` — можно продолжать.
 Future<bool> requirePro(BuildContext context, String feature) async {
@@ -11,19 +12,20 @@ Future<bool> requirePro(BuildContext context, String feature) async {
     builder: (c) => AlertDialog(
       icon: const Icon(Icons.workspace_premium_outlined),
       title: Text(feature),
-      content: const Text(
-        'Это функция ManagerBIP Pro. Разовая покупка, без подписки. '
-        'В учебном режиме её можно попробовать бесплатно.',
+      content: Text(
+        tr(
+          'Это функция ManagerBIP Pro. Разовая покупка, без подписки. В учебном режиме её можно попробовать бесплатно.',
+        ),
       ),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(c, false),
-          child: const Text('Не сейчас'),
+          child: Text(tr('Не сейчас')),
         ),
         FilledButton(
           key: const Key('pro-more'),
           onPressed: () => Navigator.pop(c, true),
-          child: const Text('Подробнее'),
+          child: Text(tr('Подробнее')),
         ),
       ],
     ),

@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:mobile/src/app.dart';
+import 'package:mobile/src/l10n/tr.dart';
 import 'package:mobile/src/rust/frb_generated.dart';
 import 'package:mobile/src/services/biometric.dart';
 import 'package:mobile/src/services/index_store.dart';
 import 'package:mobile/src/services/key_store.dart';
+import 'package:mobile/src/services/lang_store.dart';
 import 'package:mobile/src/services/license_store.dart';
 import 'package:mobile/src/state/app_state.dart';
 
@@ -75,6 +77,66 @@ void main() {
     expect(find.text('eITvMChQRH+*gVT-n4FJ'), findsOneWidget);
     expect(state.accounts.single.counter, 2);
   });
+
+  testWidgets(
+    'язык: выбор на первом экране и в настройках, выбор запоминается',
+    (t) async {
+      addTearDown(() => appLang = AppLang.ru);
+      final langs = MemoryLangStore();
+      final state = AppState(
+        keyStoreFor: (_) => MemoryKeyStore(),
+        indexStoreFor: (_) => MemoryIndexStore(),
+        biometric: NoBiometric(),
+        licenseStore: MemoryLicenseStore(),
+        langStore: langs,
+      );
+      await t.pumpWidget(ManagerBipApp(state: state));
+      await t.pumpAndSettle();
+      expect(find.text('Обычный режим'), findsOneWidget);
+
+      Future<void> pick(String lang) async {
+        await t.tap(find.byKey(const Key('language')));
+        await t.pumpAndSettle();
+        await t.tap(find.byKey(Key('lang-$lang')).last);
+        await t.pumpAndSettle();
+      }
+
+      await pick('en');
+      expect(find.text('Normal mode'), findsOneWidget);
+      expect(await langs.read(), 'en');
+      await pick('el');
+      expect(find.text('Κανονική λειτουργία'), findsOneWidget);
+
+      // В настройках: экран остаётся открытым и сразу показывает новый язык.
+      await t.tap(find.byKey(const Key('mode-learning')));
+      await t.pumpAndSettle();
+      await next(t);
+      await t.tap(find.byKey(const Key('path-restore')));
+      await t.pumpAndSettle();
+      await t.tap(find.byKey(const Key('use-demo')));
+      await t.pumpAndSettle();
+      for (var i = 0; i < 5; i++) {
+        await next(t);
+      }
+      expect(state.phase, Phase.unlocked);
+      await t.tap(find.byTooltip('Ρυθμίσεις'));
+      await t.pumpAndSettle();
+      await pick('en');
+      expect(find.text('Settings'), findsOneWidget);
+      await t.tap(find.byType(BackButton));
+      await t.pumpAndSettle();
+      expect(find.text('Sites'), findsOneWidget);
+      await t.tap(find.byTooltip('Settings'));
+      await t.pumpAndSettle();
+      await pick('ru');
+      expect(find.text('Настройки'), findsOneWidget);
+
+      // Новый запуск берёт сохранённый язык.
+      await langs.write('el');
+      await state.loadLang();
+      expect(appLang, AppLang.el);
+    },
+  );
 
   testWidgets('обычный режим: новая фраза из 24 слов с проверкой', (t) async {
     final state = memoryState();

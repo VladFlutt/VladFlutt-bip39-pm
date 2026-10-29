@@ -6,19 +6,24 @@ import '../config.dart';
 import '../state/app_scope.dart';
 import '../ui/hint.dart';
 import '../ui/wallpaper.dart';
+import '../l10n/tr.dart';
 
 /// Возможности Pro. `ready: false` — появится в обновлении, ключ уже подойдёт.
-const _features = [
-  (Icons.sync_alt, 'Перенос списка сайтов по QR и резервная копия', true),
+List<(IconData, String, bool)> get _features => [
+  (Icons.sync_alt, tr('Перенос списка сайтов по QR и резервная копия'), true),
   (
     Icons.key_outlined,
-    'PIN-коды, кодовые слова, пароли Wi‑Fi и ключи SSH из той же фразы',
+    tr('PIN-коды, кодовые слова, пароли Wi‑Fi и ключи SSH из той же фразы'),
     true,
   ),
-  (Icons.people_outline, 'Несколько профилей и скрытый профиль', true),
-  (Icons.tune, 'Шаблоны правил и правило для новых сайтов', true),
-  (Icons.password, 'Автозаполнение паролей в приложениях и браузере', false),
-  (Icons.verified_user_outlined, 'Коды двухфакторной защиты (2FA)', false),
+  (Icons.people_outline, tr('Несколько профилей и скрытый профиль'), true),
+  (Icons.tune, tr('Шаблоны правил и правило для новых сайтов'), true),
+  (
+    Icons.password,
+    tr('Автозаполнение паролей в приложениях и браузере'),
+    false,
+  ),
+  (Icons.verified_user_outlined, tr('Коды двухфакторной защиты (2FA)'), false),
 ];
 
 /// Экран Pro: что даёт, где купить ключ, ввод ключа.
@@ -45,7 +50,7 @@ class _ProScreenState extends State<ProScreen> {
       await AppScope.of(context).activatePro(_key.text);
       _key.clear();
     } on AnyhowException catch (e) {
-      setState(() => _error = e.message.replaceFirst('ключ Pro: ', ''));
+      setState(() => _error = trError(e));
     }
   }
 
@@ -54,7 +59,7 @@ class _ProScreenState extends State<ProScreen> {
       Uri.parse(url),
       mode: LaunchMode.externalApplication,
     )) {
-      setState(() => _error = 'Не удалось открыть ссылку');
+      setState(() => _error = tr('Не удалось открыть ссылку'));
     }
   }
 
@@ -86,19 +91,25 @@ class _ProScreenState extends State<ProScreen> {
                   color: scheme.primary,
                 ),
                 title: Text(
-                  pro != null ? 'Pro активирован' : 'Бесплатная версия',
+                  pro != null ? tr('Pro активирован') : tr('Бесплатная версия'),
                 ),
                 subtitle: Text(
-                  pro != null ? 'Ключ №${pro.serial}, выпущен ${pro.issued}' : 'Разовая покупка, без подписки. Пароли бесплатны всегда.',
+                  pro != null
+                      ? tr('Ключ №{0}, выпущен {1}', [pro.serial, pro.issued])
+                      : tr(
+                          'Разовая покупка, без подписки. Пароли бесплатны всегда.',
+                        ),
                 ),
               ),
             ),
             if (pro == null && state.learning)
-              const Hint(
-                short: 'В учебном режиме все функции Pro открыты: попробуйте их на тестовой фразе.',
+              Hint(
+                short: tr(
+                  'В учебном режиме все функции Pro открыты: попробуйте их на тестовой фразе.',
+                ),
               ),
             const SizedBox(height: 8),
-            Text('Что даёт Pro', style: text.titleMedium),
+            Text(tr('Что даёт Pro'), style: text.titleMedium),
             for (final (icon, title, ready) in _features)
               ListTile(
                 leading: Icon(icon),
@@ -106,39 +117,46 @@ class _ProScreenState extends State<ProScreen> {
                 trailing: ready
                     ? null
                     : Chip(
-                        label: const Text('скоро'),
+                        label: Text(tr('скоро')),
                         visualDensity: VisualDensity.compact,
                       ),
               ),
-            const Hint(
-              short: 'Доступ к паролям не зависит от Pro: они всегда вычисляются из вашей фразы.',
-              learn:
-                  'Ключ Pro проверяется прямо на телефоне, без интернета и без аккаунта. '
-                  'После переустановки введите тот же ключ ещё раз.',
+            Hint(
+              short: tr(
+                'Доступ к паролям не зависит от Pro: они всегда вычисляются из вашей фразы.',
+              ),
+              learn: tr(
+                'Ключ Pro проверяется прямо на телефоне, без интернета и без аккаунта. После переустановки введите тот же ключ ещё раз.',
+              ),
             ),
             if (pro == null) ...[
               const Divider(height: 32),
-              Text('Купить ключ', style: text.titleMedium),
-              const SizedBox(height: 8),
-              if (shops.isEmpty)
-                const Text(
-                  'Ключи продаются на Ozon, Wildberries и на сайте ManagerBIP.',
-                )
-              else
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    for (final s in shops)
-                      OutlinedButton.icon(
-                        icon: const Icon(Icons.shopping_bag_outlined),
-                        label: Text(s.name),
-                        onPressed: () => _open(s.url),
-                      ),
-                  ],
-                ),
-              const SizedBox(height: 24),
-              Text('Активировать', style: text.titleMedium),
+              // В Play-сборке без раздела о покупке: см. config.dart.
+              if (store != 'play') ...[
+                Text(tr('Купить ключ'), style: text.titleMedium),
+                const SizedBox(height: 8),
+                if (shops.isEmpty)
+                  Text(
+                    tr(
+                      'Ключи продаются на Ozon, Wildberries и на сайте ManagerBIP.',
+                    ),
+                  )
+                else
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      for (final s in shops)
+                        OutlinedButton.icon(
+                          icon: const Icon(Icons.shopping_bag_outlined),
+                          label: Text(s.name),
+                          onPressed: () => _open(s.url),
+                        ),
+                    ],
+                  ),
+                const SizedBox(height: 24),
+              ],
+              Text(tr('Активировать'), style: text.titleMedium),
               const SizedBox(height: 8),
               TextField(
                 key: const Key('pro-key'),
@@ -158,7 +176,7 @@ class _ProScreenState extends State<ProScreen> {
               FilledButton(
                 key: const Key('pro-activate'),
                 onPressed: _key.text.trim().isEmpty ? null : _activate,
-                child: const Text('Активировать'),
+                child: Text(tr('Активировать')),
               ),
             ],
           ],

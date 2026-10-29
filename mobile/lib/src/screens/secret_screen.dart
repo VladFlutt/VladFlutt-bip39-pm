@@ -5,10 +5,11 @@ import '../state/app_scope.dart';
 import '../ui/clipboard.dart';
 import '../ui/hint.dart';
 import '../ui/wallpaper.dart';
+import '../l10n/tr.dart';
 
-const secretTypeNames = {
+Map<SecretType, String> get secretTypeNames => {
   SecretType.pin: 'PIN',
-  SecretType.words: 'Слова',
+  SecretType.words: tr('Слова'),
   SecretType.wifi: 'Wi‑Fi',
   SecretType.ssh: 'SSH',
 };
@@ -56,7 +57,7 @@ class _SecretScreenState extends State<SecretScreen> {
         null,
       );
     } catch (e) {
-      return (null, '$e');
+      return (null, trError(e));
     }
   }
 
@@ -76,7 +77,9 @@ class _SecretScreenState extends State<SecretScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            rotate ? 'Новое значение, версия $counter' : 'Сохранено в списке',
+            rotate
+                ? tr('Новое значение, версия {0}', [counter])
+                : tr('Сохранено в списке'),
           ),
         ),
       );
@@ -84,10 +87,18 @@ class _SecretScreenState extends State<SecretScreen> {
   }
 
   String get _hint => switch (_kind) {
-    SecretType.pin => 'PIN для карты, домофона, сейфа или приложения банка.',
-    SecretType.words => 'Кодовое слово для банка или ответ на секретный вопрос: настоящий ответ легко узнать, этот — нет.',
-    SecretType.wifi => 'Пароль для роутера: только буквы и цифры, чтобы его было просто ввести на телевизоре.',
-    SecretType.ssh => 'Ключ SSH Ed25519. Открытый ключ добавьте на сервер или в GitHub, закрытый — в ~/.ssh.',
+    SecretType.pin => tr(
+      'PIN для карты, домофона, сейфа или приложения банка.',
+    ),
+    SecretType.words => tr(
+      'Кодовое слово для банка или ответ на секретный вопрос: настоящий ответ легко узнать, этот — нет.',
+    ),
+    SecretType.wifi => tr(
+      'Пароль для роутера: только буквы и цифры, чтобы его было просто ввести на телевизоре.',
+    ),
+    SecretType.ssh => tr(
+      'Ключ SSH Ed25519. Открытый ключ добавьте на сервер или в GitHub, закрытый — в ~/.ssh.',
+    ),
   };
 
   @override
@@ -103,11 +114,11 @@ class _SecretScreenState extends State<SecretScreen> {
         backgroundColor: Colors.transparent,
         appBar: AppBar(
           backgroundColor: Colors.transparent,
-          title: Text(widget.item?.label ?? 'Новый секрет'),
+          title: Text(widget.item?.label ?? tr('Новый секрет')),
           actions: [
             if (saved != null)
               IconButton(
-                tooltip: 'Убрать из списка',
+                tooltip: tr('Убрать из списка'),
                 icon: const Icon(Icons.delete_outline),
                 onPressed: () async {
                   await state.removeSecret(saved);
@@ -148,23 +159,25 @@ class _SecretScreenState extends State<SecretScreen> {
               controller: _label,
               enabled: widget.item == null,
               autocorrect: false,
-              decoration: const InputDecoration(
-                labelText: 'Для чего',
-                hintText: 'карта сбер, домашний wifi, github laptop',
+              decoration: InputDecoration(
+                labelText: tr('Для чего'),
+                hintText: tr('карта сбер, домашний wifi, github laptop'),
                 border: OutlineInputBorder(),
               ),
               onChanged: (_) => setState(() {}),
             ),
             Hint(
               short: _hint,
-              learn:
-                  'Секрет вычисляется из фразы, метки и версии, как пароль сайта. '
-                  'Регистр и пробелы в метке не важны. Запомните метку: без неё секрет не восстановить.',
+              learn: tr(
+                'Секрет вычисляется из фразы, метки и версии, как пароль сайта. Регистр и пробелы в метке не важны. Запомните метку: без неё секрет не восстановить.',
+              ),
             ),
             if (_kind != SecretType.ssh)
               ListTile(
                 title: Text(
-                  _kind == SecretType.words ? 'Слов: $_size' : 'Длина: $_size',
+                  _kind == SecretType.words
+                      ? tr('Слов: {0}', [_size])
+                      : tr('Длина: {0}', [_size]),
                 ),
                 subtitle: Slider(
                   key: const Key('secret-size'),
@@ -181,19 +194,19 @@ class _SecretScreenState extends State<SecretScreen> {
               if (value.public != null)
                 Card(
                   child: ListTile(
-                    title: const Text('Открытый ключ'),
+                    title: Text(tr('Открытый ключ')),
                     subtitle: Text(
                       value.public!,
                       key: const Key('ssh-public'),
                       style: mono.copyWith(fontSize: 12),
                     ),
                     trailing: IconButton(
-                      tooltip: 'Копировать открытый ключ',
+                      tooltip: tr('Копировать открытый ключ'),
                       icon: const Icon(Icons.copy),
                       onPressed: () => copyWithWipe(
                         context,
                         value.public!,
-                        what: 'Открытый ключ скопирован',
+                        what: tr('Открытый ключ скопирован'),
                         ttl: null,
                       ),
                     ),
@@ -206,7 +219,7 @@ class _SecretScreenState extends State<SecretScreen> {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       if (value.public != null)
-                        const Text('Закрытый ключ — никому не показывайте'),
+                        Text(tr('Закрытый ключ — никому не показывайте')),
                       Row(
                         children: [
                           Expanded(
@@ -224,21 +237,21 @@ class _SecretScreenState extends State<SecretScreen> {
                             ),
                           ),
                           IconButton(
-                            tooltip: _show ? 'Скрыть' : 'Показать',
+                            tooltip: _show ? tr('Скрыть') : tr('Показать'),
                             icon: Icon(
                               _show ? Icons.visibility_off : Icons.visibility,
                             ),
                             onPressed: () => setState(() => _show = !_show),
                           ),
                           IconButton(
-                            tooltip: 'Копировать',
+                            tooltip: tr('Копировать'),
                             icon: const Icon(Icons.copy),
                             onPressed: () => copyWithWipe(context, value.value),
                           ),
                         ],
                       ),
                       const SizedBox(height: 8),
-                      Text('Версия $_counter'),
+                      Text(tr('Версия {0}', [_counter])),
                     ],
                   ),
                 ),
@@ -251,7 +264,9 @@ class _SecretScreenState extends State<SecretScreen> {
                       key: const Key('secret-save'),
                       onPressed: () => _save(value),
                       icon: const Icon(Icons.bookmark_add_outlined),
-                      label: Text(saved == null ? 'В список' : 'Обновить'),
+                      label: Text(
+                        saved == null ? tr('В список') : tr('Обновить'),
+                      ),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -260,13 +275,15 @@ class _SecretScreenState extends State<SecretScreen> {
                       key: const Key('secret-rotate'),
                       onPressed: () => _save(value, rotate: true),
                       icon: const Icon(Icons.autorenew),
-                      label: const Text('Сменить'),
+                      label: Text(tr('Сменить')),
                     ),
                   ),
                 ],
               ),
-              const Hint(
-                short: 'В списке хранятся только метка и версия. Само значение вычисляется заново.',
+              Hint(
+                short: tr(
+                  'В списке хранятся только метка и версия. Само значение вычисляется заново.',
+                ),
               ),
             ],
           ],
