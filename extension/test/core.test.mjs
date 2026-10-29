@@ -82,3 +82,34 @@ test("вход по логину: k_app под мастер-паролем", () 
   assert.throws(() => core.openVault(data, "other", "correct horse battery"), /Неверный логин или пароль/);
   assert.throws(() => core.sealVault(k, "vlad", "short"), /короче 10/);
 });
+
+test("Pro: секреты совпадают с векторами ядра", () => {
+  const { k_app: k } = core.unlock(ABANDON);
+  assert.equal(core.secret(k, { kind: "pin", length: 4 }, "карта", 1).value, "5987");
+  assert.equal(core.secret(k, { kind: "pin", length: 6 }, " Карта Сбер ", 1).value, "936802");
+  assert.equal(core.secret(k, { kind: "words", count: 4 }, "secret question", 1).value, "rice trade budget staff");
+  assert.equal(core.secret(k, { kind: "wifi", length: 20 }, "home wifi", 1).value, "1w2hnpKJyh93chs4N61a");
+  const ssh = core.secret(k, { kind: "ssh" }, "github laptop", 1);
+  assert.match(ssh.public, /^ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJv18B347hIuVqi6ZQ6S6DHpx082zNUl7P3W8NcYfnQT/);
+  assert.match(ssh.value, /BEGIN OPENSSH PRIVATE KEY/);
+  assert.throws(() => core.secret(k, { kind: "pin", length: 3 }, "x", 1), /длина PIN/);
+});
+
+test("Pro: код переноса вливается, чужие ключи не принимаются", () => {
+  const { k_app: k } = core.unlock(ABANDON);
+  const src = {
+    entries: [{ domain: "github.com", login: "vlad", counter: 3, policy: DEFAULT_POLICY }],
+    secrets: [{ label: "карта", kind: "pin", length: 4, counter: 1 }],
+    templates: [{ name: "Банк", policy: { ...DEFAULT_POLICY, length: 16, symbols: false } }],
+  };
+  const code = core.exportCode(k, src);
+  assert.match(code, /^PMX1:/);
+  const dst = { entries: [{ domain: "github.com", login: "vlad", counter: 1, policy: DEFAULT_POLICY }] };
+  const r = core.importCode(k, dst, code);
+  assert.deepEqual([r.added, r.updated, r.kept], [2, 1, 0]);
+  assert.equal(r.index.entries[0].counter, 3);
+  assert.equal(r.index.secrets[0].label, "карта");
+  const { k_app: other } = core.unlock(ABANDON, "другая");
+  assert.throws(() => core.importCode(other, dst, code));
+  assert.throws(() => core.license("MBIP-AAAA"), /ключ/);
+});

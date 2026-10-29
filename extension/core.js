@@ -53,6 +53,15 @@ export async function loadCore(source) {
         nonce: toHex(crypto.getRandomValues(new Uint8Array(24))),
       }),
     openVault: (data, login, password) => call({ op: "vault_open", data, login, password }),
+    // Pro: ключ MBIP-… → { serial, issued }.
+    license: (key) => call({ op: "license", key }),
+    // kind — { kind: "pin", length } | { kind: "words", count } | { kind: "wifi", length } | { kind: "ssh" }.
+    secret: (kApp, kind, label, counter) => call({ op: "secret", k_app: kApp, ...kind, label, counter }),
+    exportCode: (kApp, index) =>
+      call({ op: "transfer_export", k_app: kApp, index, nonce: toHex(crypto.getRandomValues(new Uint8Array(24))) })
+        .code,
+    // → { index, added, updated, kept }.
+    importCode: (kApp, index, code) => call({ op: "transfer_import", k_app: kApp, index, code }),
   };
 }
 

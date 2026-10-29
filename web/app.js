@@ -7,6 +7,7 @@ import { DEFAULT_POLICY, loadCore, toHex, upsertEntry } from "./core.js";
 
 const INDEX_KEY = "bip39-pm.index";
 const VAULTS_KEY = "bip39-pm.vaults";
+const PRO_KEY = "bip39-pm.pro";
 const AUTOLOCK_MS = 5 * 60 * 1000;
 const CLIPBOARD_CLEAR_MS = 30_000;
 
@@ -21,6 +22,8 @@ let index = { entries: [] };
 let autolockTimer;
 // Учебный режим: демо-фраза, подсказки, в localStorage ничего не пишется.
 let demo = false;
+// Проверенный ключ Pro: { serial, issued } или null.
+let pro = null;
 
 function status(text, kind = "") {
   $("status").textContent = text;
@@ -124,8 +127,10 @@ function lock() {
   endCoach();
   resetWizard();
   clearTimeout(autolockTimer);
-  for (const id of ["site", "login", "password", "mnemonic", "passphrase", "signin-password", "new-password", "new-password2", "vault-password", "vault-password2"])
+  for (const id of ["site", "login", "password", "mnemonic", "passphrase", "signin-password", "new-password", "new-password2", "vault-password", "vault-password2", "secret-label", "secret-value", "transfer-code", "transfer-input"])
     $(id).value = "";
+  $("secret-out").hidden = true;
+  $("transfer-code").hidden = true;
   $("password").type = "password";
   $("reveal").textContent = "Показать";
   $("session").hidden = true;
@@ -226,6 +231,7 @@ function openSession(k_app, fingerprint) {
   compute();
   showScreen("unlocked");
   renderAccounts();
+  renderPro();
   touch();
   if (!demo) $("site").focus();
   status(`Открыто. Сверьте отпечаток: ${fingerprint}`, "ok");
@@ -463,7 +469,7 @@ function currentDomain() {
 }
 
 function applyEntry(entry) {
-  const p = entry?.policy ?? DEFAULT_POLICY;
+  const p = entry?.policy ?? index.default_policy ?? DEFAULT_POLICY;
   $("counter").value = entry?.counter ?? 1;
   $("length").value = p.length;
   for (const k of ["lower", "upper", "digits", "symbols"]) $(k).checked = p[k];
@@ -565,6 +571,202 @@ function renderAccounts() {
       return li;
     }),
   );
+}
+
+// --- Pro ---
+
+// Где купить ключ. Пустая ссылка — кнопка не показывается.
+const PRO_SHOPS = [
+  ["Ozon", ""],
+  ["Wildberries", ""],
+  ["Сайт ManagerBIP", "https://metalogia.vercel.app/#contact"],
+];
+
+// Готовые правила, как в мобильном приложении.
+const policyOf = (length, { lower = true, upper = true, symbols = true } = {}) => ({ length, lower, upper, digits: true, symbols });
+const BUILTIN_TEMPLATES = [
+  { name: "Стандарт", policy: policyOf(20) },
+  { name: "Максимум", policy: policyOf(32) },
+  { name: "Без символов", policy: policyOf(20, { symbols: false }) },
+  { name: "Короткий", policy: policyOf(12) },
+  { name: "Только цифры", policy: policyOf(8, { lower: false, upper: false, symbols: false }) },
+];
+
+// Параметры секретов: поле размера, его границы и значение по умолчанию.
+const SECRET_KINDS = {
+  pin: { field: "length", name: "Цифр", min: 4, max: 12, value: 4, title: "PIN" },
+  words: { field: "count", name: "Слов", min: 3, max: 8, value: 4, title: "слова" },
+  wifi: { field: "length", name: "Длина", min: 12, max: 63, value: 20, title: "Wi‑Fi" },
+  ssh: { title: "SSH" },
+};
+
+// В учебном режиме Pro открыт, чтобы функции можно было попробовать на демо-фразе.
+const proActive = () => pro !== null || demo;
+
+function loadPro() {
+  let key = null;
+  try {
+    key = localStorage.getItem(PRO_KEY);
+  } catch {}
+  if (!key) return;
+  try {
+    pro = core.license(key);
+  } catch {
+    // Ключ отозван или повреждён: работаем как бесплатная версия.
+    pro = null;
+  }
+}
+
+function renderPro() {
+  document.body.classList.toggle("pro-on", proActive());
+  $("pro-badge").hidden = pro === null;
+  $("pro-status").textContent = pro
+    ? `Pro активирован. Ключ №${pro.serial}, выпущен ${pro.issued}`
+    : demo
+      ? "В учебном режиме все функции Pro открыты: попробуйте их на демо-фразе."
+      : "Бесплатная версия. Пароли бесплатны всегда.";
+  $("pro-activate-box").hidden = pro !== null;
+  $("pro-forget").hidden = pro === null;
+  $("pro-shops").replaceChildren(
+    ...PRO_SHOPS.filter(([, url]) => url).map(([name, url]) =>
+      Object.assign(document.createElement("a"), { className: "link", href: url, target: "_blank", rel: "noreferrer", textContent: `Купить: ${name}` }),
+    ),
+  );
+  renderTemplates();
+  renderSecrets();
+}
+
+// Функция Pro без ключа: объясняем и ведём к блоку Pro.
+function requirePro(feature) {
+  if (proActive()) return true;
+  $("pro-card").scrollIntoView({ behavior: "smooth", block: "center" });
+  $("pro-key").focus({ preventScroll: true });
+  status(`«${feature}» — функция ManagerBIP Pro. Введите ключ в блоке Pro.`, "error");
+  return false;
+}
+
+const samePolicy = (a, b) => ["length", "lower", "upper", "digits", "symbols"].every((k) => a?.[k] === b?.[k]);
+
+function renderTemplates() {
+  const current = policy();
+  const own = index.templates ?? [];
+  $("templates").replaceChildren(
+    ...[...BUILTIN_TEMPLATES, ...own].map((t) => {
+      const b = document.createElement("button");
+      b.className = "chip";
+      b.type = "button";
+      b.textContent = t.name;
+      b.setAttribute("aria-pressed", String(samePolicy(t.policy, current)));
+      b.addEventListener("click", (e) => {
+        if (own.includes(t) && e.target.classList.contains("x")) {
+          index = { ...index, templates: own.filter((x) => x !== t) };
+          persistIndex();
+          renderTemplates();
+          return;
+        }
+        if (!requirePro("Шаблоны правил")) return;
+        applyPolicy(t.policy);
+      });
+      if (own.includes(t)) {
+        const x = Object.assign(document.createElement("span"), { className: "x", textContent: "✕", title: "Удалить шаблон" });
+        b.append(x);
+      }
+      return b;
+    }),
+  );
+}
+
+function applyPolicy(p) {
+  $("length").value = p.length;
+  for (const k of ["lower", "upper", "digits", "symbols"]) $(k).checked = p[k];
+  compute();
+  renderTemplates();
+}
+
+function secretKind() {
+  const kind = $("secret-kind").value;
+  const spec = SECRET_KINDS[kind];
+  return spec.field ? { kind, [spec.field]: Number($("secret-size").value) } : { kind };
+}
+
+function onSecretKind() {
+  const spec = SECRET_KINDS[$("secret-kind").value];
+  $("secret-size-label").hidden = !spec.field;
+  if (spec.field) {
+    $("secret-size-name").textContent = spec.name;
+    Object.assign($("secret-size"), { min: spec.min, max: spec.max, value: spec.value });
+  }
+  $("secret-out").hidden = true;
+}
+
+function showSecret() {
+  if (!requirePro("Секреты")) return;
+  const label = $("secret-label").value;
+  if (!label.trim()) throw new Error("Укажите метку секрета");
+  const r = core.secret(kApp, secretKind(), label, Number($("secret-counter").value));
+  $("secret-value").value = r.value;
+  $("secret-value").rows = r.public ? 8 : 1;
+  $("secret-public").textContent = r.public ?? "";
+  $("secret-public-wrap").hidden = !r.public;
+  $("secret-out").hidden = false;
+  return r;
+}
+
+function secretTitle(s) {
+  const spec = SECRET_KINDS[s.kind];
+  return spec.field ? `${spec.title} ${s[spec.field]}` : spec.title;
+}
+
+function renderSecrets() {
+  const list = index.secrets ?? [];
+  $("secrets").replaceChildren(
+    ...list.map((s) => {
+      const li = document.createElement("li");
+      const open = document.createElement("button");
+      open.className = "open";
+      open.append(
+        Object.assign(document.createElement("span"), { textContent: s.label }),
+        Object.assign(document.createElement("span"), { className: "meta", textContent: `${secretTitle(s)} · версия ${s.counter}` }),
+      );
+      open.addEventListener(
+        "click",
+        guarded(async () => {
+          $("secret-kind").value = s.kind;
+          onSecretKind();
+          if (SECRET_KINDS[s.kind].field) $("secret-size").value = s[SECRET_KINDS[s.kind].field];
+          $("secret-label").value = s.label;
+          $("secret-counter").value = s.counter;
+          showSecret();
+        }),
+      );
+      const remove = Object.assign(document.createElement("button"), { className: "remove", textContent: "✕", title: "Удалить из списка" });
+      remove.setAttribute("aria-label", `Удалить ${s.label}`);
+      remove.addEventListener(
+        "click",
+        guarded(async () => {
+          if (!confirm(`Удалить «${s.label}» из списка? Секрет не изменится.`)) return;
+          index = { ...index, secrets: list.filter((x) => x !== s) };
+          persistIndex();
+          renderSecrets();
+        }),
+      );
+      li.append(open, remove);
+      return li;
+    }),
+  );
+}
+
+async function copyTemporarily(value, message) {
+  await navigator.clipboard.writeText(value);
+  status(message ?? "Скопировано. Буфер очистится через 30 секунд.", "ok");
+  setTimeout(async () => {
+    try {
+      if ((await navigator.clipboard.readText()) === value) await navigator.clipboard.writeText("");
+    } catch {
+      // Без разрешения на чтение буфера очищаем вслепую, только если вкладка активна.
+      if (document.hasFocus()) await navigator.clipboard.writeText("").catch(() => {});
+    }
+  }, CLIPBOARD_CLEAR_MS);
 }
 
 // --- обработчики ---
@@ -679,7 +881,8 @@ $("reset-index").addEventListener(
 
 $("site").addEventListener("input", onIdentityInput);
 $("login").addEventListener("input", onIdentityInput);
-for (const id of ["counter", "length", "lower", "upper", "digits", "symbols"]) $(id).addEventListener("input", compute);
+for (const id of ["counter", "length", "lower", "upper", "digits", "symbols"])
+  $(id).addEventListener("input", () => (compute(), renderTemplates()));
 $("filter").addEventListener("input", renderAccounts);
 
 $("reveal").addEventListener("click", () => {
@@ -694,16 +897,7 @@ $("copy").addEventListener(
   guarded(async () => {
     const value = $("password").value;
     if (!value) throw new Error("Укажите сайт и логин");
-    await navigator.clipboard.writeText(value);
-    status("Скопировано. Буфер очистится через 30 секунд.", "ok");
-    setTimeout(async () => {
-      try {
-        if ((await navigator.clipboard.readText()) === value) await navigator.clipboard.writeText("");
-      } catch {
-        // Без разрешения на чтение буфера очищаем вслепую, только если вкладка активна.
-        if (document.hasFocus()) await navigator.clipboard.writeText("").catch(() => {});
-      }
-    }, CLIPBOARD_CLEAR_MS);
+    await copyTemporarily(value);
   }),
 );
 
@@ -757,7 +951,131 @@ $("import").addEventListener(
   }),
 );
 
+$("pro-activate").addEventListener(
+  "click",
+  guarded(async () => {
+    const key = $("pro-key").value.trim();
+    if (!key) throw new Error("Введите ключ MBIP-…");
+    pro = core.license(key);
+    try {
+      localStorage.setItem(PRO_KEY, key);
+    } catch {
+      status("Pro активирован до закрытия вкладки: браузер не сохранил ключ.", "error");
+    }
+    $("pro-key").value = "";
+    renderPro();
+    if ($("status").className !== "error") status(`Pro активирован, ключ №${pro.serial}. Спасибо за покупку!`, "ok");
+  }),
+);
+$("pro-key").addEventListener("keydown", (e) => e.key === "Enter" && $("pro-activate").click());
+$("pro-forget").addEventListener(
+  "click",
+  guarded(async () => {
+    if (!confirm("Удалить ключ Pro из этого браузера? Сохраните ключ: он понадобится, чтобы включить Pro снова.")) return;
+    localStorage.removeItem(PRO_KEY);
+    pro = null;
+    renderPro();
+  }),
+);
+$("pro-badge").addEventListener("click", () => $("pro-card").scrollIntoView({ behavior: "smooth" }));
+
+$("template-save").addEventListener(
+  "click",
+  guarded(async () => {
+    if (!requirePro("Свои шаблоны правил")) return;
+    const name = prompt("Название шаблона, например «Банк»")?.trim();
+    if (!name) return;
+    const others = (index.templates ?? []).filter((t) => t.name !== name);
+    index = { ...index, templates: [...others, { name, policy: policy() }] };
+    persistIndex();
+    renderTemplates();
+    status(`Шаблон «${name}» сохранён`, "ok");
+  }),
+);
+$("default-save").addEventListener(
+  "click",
+  guarded(async () => {
+    if (!requirePro("Правило для новых сайтов")) return;
+    const p = policy();
+    index = { ...index, default_policy: samePolicy(p, DEFAULT_POLICY) ? undefined : p };
+    persistIndex();
+    status("Новые сайты будут открываться с этими настройками", "ok");
+  }),
+);
+
+$("secret-kind").addEventListener("change", onSecretKind);
+for (const id of ["secret-size", "secret-label", "secret-counter"]) $(id).addEventListener("input", () => ($("secret-out").hidden = true));
+$("secret-label").addEventListener("keydown", (e) => e.key === "Enter" && $("secret-get").click());
+$("secret-get").addEventListener("click", guarded(async () => showSecret()));
+$("secret-copy").addEventListener(
+  "click",
+  guarded(async () => {
+    const value = $("secret-value").value;
+    if (!value) throw new Error("Сначала получите секрет");
+    await copyTemporarily(value);
+  }),
+);
+$("secret-save").addEventListener(
+  "click",
+  guarded(async () => {
+    const r = showSecret();
+    if (!r) return;
+    const kind = secretKind();
+    const entry = { label: r.label, ...kind, counter: Number($("secret-counter").value) };
+    const others = (index.secrets ?? []).filter((s) => !(s.kind === kind.kind && s.label === r.label));
+    index = { ...index, secrets: [...others, entry] };
+    persistIndex();
+    renderSecrets();
+    status(`«${r.label}» сохранён в список`, "ok");
+  }),
+);
+
+function transferCode() {
+  if (!requirePro("Перенос кодом")) return null;
+  return core.exportCode(kApp, index);
+}
+$("transfer-show").addEventListener(
+  "click",
+  guarded(async () => {
+    const code = transferCode();
+    if (!code) return;
+    $("transfer-code").value = code;
+    $("transfer-code").hidden = false;
+  }),
+);
+$("transfer-copy").addEventListener(
+  "click",
+  guarded(async () => {
+    const code = transferCode();
+    if (code) await copyTemporarily(code, "Код переноса скопирован");
+  }),
+);
+$("transfer-import").addEventListener(
+  "click",
+  guarded(async () => {
+    if (!requirePro("Перенос кодом")) return;
+    const code = $("transfer-input").value.trim();
+    if (!code) throw new Error("Вставьте код PMX1:…");
+    let r;
+    try {
+      r = core.importCode(kApp, index, code);
+    } catch (e) {
+      throw new Error(e.message.replace(/^ошибка индекса: /, ""));
+    }
+    index = r.index;
+    persistIndex();
+    $("transfer-input").value = "";
+    applyEntry(findEntry());
+    compute();
+    renderAccounts();
+    renderPro();
+    status(`Добавлено: ${r.added}, обновлено: ${r.updated}, без изменений: ${r.kept}`, "ok");
+  }),
+);
+
 for (const ev of ["pointerdown", "keydown"]) document.addEventListener(ev, touch, { passive: true });
 
+loadPro();
+onSecretKind();
 lock();
 status("");

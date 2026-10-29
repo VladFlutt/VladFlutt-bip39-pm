@@ -6,7 +6,7 @@
 //! `{"ok": ...}` или `{"error": "..."}`.
 
 use bip39_pm::index::NONCE_LEN;
-use bip39_pm::{normalize, vault, AppKey, Index, Policy, Site};
+use bip39_pm::{license, normalize, transfer, vault, AppKey, Index, Policy, SecretKind, Site};
 use serde::Deserialize;
 use serde_json::{json, Value};
 use zeroize::Zeroizing;
@@ -92,6 +92,30 @@ enum Request {
         data: String,
         login: String,
         password: Zeroizing<String>,
+    },
+    /// Ключ ManagerBIP Pro `MBIP-…`, проверка офлайн.
+    License {
+        key: String,
+    },
+    /// PIN, слова, пароль Wi‑Fi или ключ SSH по метке.
+    Secret {
+        k_app: Zeroizing<String>,
+        #[serde(flatten)]
+        kind: SecretKind,
+        label: String,
+        counter: u32,
+    },
+    /// Индекс → код переноса `PMX1:…`.
+    TransferExport {
+        k_app: Zeroizing<String>,
+        index: Index,
+        nonce: String,
+    },
+    /// Код переноса, влитый в индекс: больший счётчик побеждает.
+    TransferImport {
+        k_app: Zeroizing<String>,
+        index: Index,
+        code: String,
     },
 }
 
@@ -184,6 +208,47 @@ fn handle(input: &[u8]) -> Result<Value, String> {
             let key =
                 vault::open(&from_hex(&data)?, &login, &password).map_err(|e| e.to_string())?;
             json!({ "k_app": to_hex(key.to_bytes().as_ref()), "fingerprint": key.fingerprint() })
+        }
+        Request::License { key } => {
+            let lic = license::verify_pro(&key).map_err(|e| e.to_string())?;
+            json!({ "serial": lic.serial, "issued": lic.issued_date() })
+        }
+        Request::Secret {
+            k_app,
+            kind,
+            label,
+            counter,
+        } => {
+            let secret = app_key(&k_app)?
+                .secret(&kind, &label, counter)
+                .map_err(|e| e.to_string())?;
+            json!({
+                "label": normalize::login(&label),
+                "value": secret.value.as_str(),
+                "public": secret.public,
+            })
+        }
+        Request::TransferExport {
+            k_app,
+            index,
+            nonce,
+        } => {
+            let nonce: [u8; NONCE_LEN] = from_hex(&nonce)?
+                .try_into()
+                .map_err(|_| "nonce: нужно 24 байта")?;
+            let code = transfer::export_text_with_nonce(&index, &app_key(&k_app)?, &nonce)
+                .map_err(|e| e.to_string())?;
+            json!({ "code": code })
+        }
+        Request::TransferImport {
+            k_app,
+            mut index,
+            code,
+        } => {
+            let other =
+                transfer::import_text(&code, &app_key(&k_app)?).map_err(|e| e.to_string())?;
+            let r = index.merge(other);
+            json!({ "index": index, "added": r.added, "updated": r.updated, "kept": r.kept })
         }
     })
 }

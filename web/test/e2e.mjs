@@ -72,6 +72,31 @@ try {
   assert.equal(await page.textContent("#coach-next"), "Начать работу");
   await page.click("#save");
   assert.equal(await page.locator("#accounts li").count(), 1);
+
+  // В обучении функции Pro открыты: секреты, шаблоны, код переноса.
+  assert.match(await page.textContent("#pro-status"), /учебном режиме/);
+  await page.fill("#secret-label", "карта");
+  await page.click("#secret-get");
+  assert.equal(await page.inputValue("#secret-value"), "5987");
+  await page.click("#secret-save");
+  await page.selectOption("#secret-kind", "ssh");
+  assert.equal(await page.isHidden("#secret-size-label"), true);
+  await page.fill("#secret-label", "github laptop");
+  await page.click("#secret-get");
+  assert.match(await page.textContent("#secret-public"), /^ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJv18B347hIuVqi6ZQ6S6DHpx082zNUl7P3W8NcYfnQT/);
+  await page.click("#secret-save");
+  assert.equal(await page.locator("#secrets li").count(), 2);
+  await page.locator("#secrets li", { hasText: "карта" }).locator("button.open").click();
+  assert.equal(await page.inputValue("#secret-value"), "5987");
+  await page.click("#templates .chip:text('Без символов')");
+  assert.equal(await page.isChecked("#symbols"), false);
+  assert.equal(await page.inputValue("#length"), "20");
+  await page.click("#transfer-show");
+  const demoCode = await page.inputValue("#transfer-code");
+  assert.match(demoCode, /^PMX1:/);
+  await page.fill("#transfer-input", demoCode);
+  await page.click("#transfer-import");
+  assert.match(await page.textContent("#status"), /Добавлено: 0, обновлено: 0, без изменений: 3/);
   assert.deepEqual(await page.evaluate(() => Object.keys(localStorage)), [], "обучение ничего не сохраняет");
 
   // «Начать работу» после обучения открывает пошаговую настройку.
@@ -157,6 +182,38 @@ try {
   assert.equal(await page.inputValue("#password"), "oh1fWuHJh2e3emF0");
   await page.click("#save");
   assert.equal(await page.locator("#accounts li").count(), 2);
+
+  // Без ключа функции Pro закрыты, чужой ключ не принимается.
+  assert.match(await page.textContent("#pro-status"), /Бесплатная версия/);
+  assert.equal(await page.isVisible("#pro-badge"), false);
+  await page.fill("#secret-label", "карта");
+  await page.click("#secret-get");
+  assert.match(await page.textContent("#status"), /«Секреты» — функция ManagerBIP Pro/);
+  assert.equal(await page.isHidden("#secret-out"), true);
+  await page.click("#transfer-show");
+  assert.equal(await page.isHidden("#transfer-code"), true);
+  assert.equal(await page.locator("#pro-shops a").count(), 1);
+  await page.fill("#pro-key", "MBIP-AAAA-BBBB");
+  await page.click("#pro-activate");
+  assert.match(await page.textContent("#status"), /ключ/);
+  assert.equal(await page.evaluate(() => localStorage.getItem("bip39-pm.pro")), null);
+
+  // Настоящий ключ издателя в репозитории не хранится: проверка активации — по переменной окружения.
+  if (process.env.PM_TEST_PRO_KEY) {
+    await page.fill("#pro-key", process.env.PM_TEST_PRO_KEY);
+    await page.click("#pro-activate");
+    await page.waitForSelector("#pro-badge:not([hidden])");
+    assert.match(await page.textContent("#pro-status"), /Pro активирован/);
+    await page.click("#secret-get");
+    assert.equal(await page.inputValue("#secret-value"), "5987");
+    await page.click("#default-save");
+    await page.fill("#site", "new-site.com");
+    assert.equal(await page.inputValue("#length"), "16", "правило для новых сайтов");
+    await page.fill("#site", "bank.ru");
+    page.once("dialog", (d) => d.accept());
+    await page.click("#pro-forget");
+    assert.equal(await page.evaluate(() => localStorage.getItem("bip39-pm.pro")), null);
+  }
 
   // Перезагрузка: ключ забыт, индекс восстанавливается после ввода той же seed.
   // Заодно создаём вход по логину и мастер-паролю.

@@ -9,5 +9,5 @@ class ProShop {
 const proShops = [
   ProShop('Ozon', ''),
   ProShop('Wildberries', ''),
-  ProShop('Сайт ManagerBIP', ''),
+  ProShop('Сайт ManagerBIP', 'https://metalogia.vercel.app/#contact'),
 ];
