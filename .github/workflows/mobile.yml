@@ -63,6 +63,8 @@ jobs:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: stable
       - run: flutter build apk --debug
+      # Проверка релизной сборки для Play (R8, без ссылок на покупку); подпись — отладочная.
+      - run: flutter build appbundle --release --dart-define=STORE=play
       - uses: actions/upload-artifact@v4
         with:
           name: managerbip-debug-apk
@@ -78,6 +80,67 @@ jobs:
             --prerelease --target "$GITHUB_SHA" --title "ManagerBIP (debug APK)" \
             --notes "Отладочная сборка для проверки на Android. Не для повседневного использования."
           gh release upload android-debug ManagerBIP-debug.apk --clobber
+
+  # Подписанный AAB для Google Play. Нужны секреты ANDROID_KEYSTORE_BASE64,
+  # ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD (см. docs/play-store.md).
+  play:
+    runs-on: ubuntu-latest
+    needs: flutter
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: write
+    defaults:
+      run:
+        working-directory: mobile
+    env:
+      KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check signing secrets
+        id: keys
+        run: |
+          if [ -n "$KEYSTORE_BASE64" ]; then echo "ok=true" >> "$GITHUB_OUTPUT"; else
+            echo "::warning::Секрет ANDROID_KEYSTORE_BASE64 не задан: AAB для Google Play не собирается"; fi
+      - uses: dtolnay/rust-toolchain@stable
+        if: steps.keys.outputs.ok
+      - uses: actions/setup-java@v4
+        if: steps.keys.outputs.ok
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: subosito/flutter-action@v2
+        if: steps.keys.outputs.ok
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+      - name: Build signed AAB
+        if: steps.keys.outputs.ok
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          export ANDROID_KEYSTORE_PATH="$RUNNER_TEMP/upload.jks"
+          echo "$KEYSTORE_BASE64" | base64 -d > "$ANDROID_KEYSTORE_PATH"
+          # Номер сборки растёт с каждым запуском: Play не принимает повтор versionCode.
+          flutter build appbundle --release --dart-define=STORE=play \
+            --build-number=$((GITHUB_RUN_NUMBER + 100))
+          rm "$ANDROID_KEYSTORE_PATH"
+          cp build/app/outputs/bundle/release/app-release.aab ManagerBIP-play.aab
+      - uses: actions/upload-artifact@v4
+        if: steps.keys.outputs.ok
+        with:
+          name: managerbip-play-aab
+          path: mobile/ManagerBIP-play.aab
+      - name: Publish AAB
+        if: steps.keys.outputs.ok
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view android-play >/dev/null 2>&1 || gh release create android-play \
+            --prerelease --target "$GITHUB_SHA" --title "ManagerBIP для Google Play (AAB)" \
+            --notes "Подписанный ключом загрузки AAB. Загружайте в Play Console: Тестирование → Закрытое тестирование."
+          gh release upload android-play ManagerBIP-play.aab --clobber
 
   ios:
     runs-on: macos-latest
