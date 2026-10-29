@@ -19,6 +19,18 @@ const KEY_LEN: usize = PAYLOAD_LEN + 64;
 /// Разделение доменов подписи: ключ лицензии не совпадёт с подписью чего-то ещё.
 const CONTEXT: &[u8] = b"managerbip-license-v1";
 
+/// Публичный ключ издателя ManagerBIP (`pm-license keygen`). Приватная пара хранится только у издателя.
+pub const PUBLISHER_KEY: &str = "aa86d0207e48356fb0ac77797b2debb19c3b3c355803dce1dbed0387f9b3568a";
+
+/// Отозванные серийные номера: утёкшие или возвращённые ключи.
+pub const REVOKED: &[u32] = &[];
+
+/// Проверить ключ ManagerBIP Pro: ключ издателя и список отзыва зашиты здесь,
+/// чтобы мобильное приложение и веб-версия принимали одни и те же ключи.
+pub fn verify_pro(key: &str) -> Result<License> {
+    License::verify(key, &publisher_key(PUBLISHER_KEY)?, REVOKED)
+}
+
 /// Редакция приложения, которую открывает ключ.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Edition {
@@ -68,6 +80,20 @@ impl License {
             .map(|c| std::str::from_utf8(c).expect("base32 — ASCII"))
             .collect();
         format!("{PREFIX}-{}", groups.join("-"))
+    }
+
+    /// Дата выпуска, `ГГГГ-ММ-ДД` (алгоритм days-from-civil, Howard Hinnant).
+    pub fn issued_date(&self) -> String {
+        let z = 20_454 + i64::from(self.issued_day) + 719_468;
+        let era = z.div_euclid(146_097);
+        let doe = z - era * 146_097;
+        let yoe = (doe - doe / 1460 + doe / 36_524 - doe / 146_096) / 365;
+        let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+        let mp = (5 * doy + 2) / 153;
+        let d = doy - (153 * mp + 2) / 5 + 1;
+        let m = if mp < 10 { mp + 3 } else { mp - 9 };
+        let y = yoe + era * 400 + i64::from(m <= 2);
+        format!("{y:04}-{m:02}-{d:02}")
     }
 
     /// Проверить ключ публичным ключом издателя. `revoked` — отозванные серийные номера.

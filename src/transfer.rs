@@ -6,7 +6,7 @@
 use data_encoding::BASE64URL_NOPAD;
 
 use crate::derive::AppKey;
-use crate::index::Index;
+use crate::index::{Index, NONCE_LEN};
 use crate::{normalize, Error, Result};
 
 const PREFIX: &str = "PMX1:";
@@ -15,6 +15,16 @@ const PREFIX: &str = "PMX1:";
 #[cfg(feature = "os-rng")]
 pub fn export_text(index: &Index, key: &AppKey) -> Result<String> {
     let blob = index.encrypt(&key.index_key())?;
+    Ok(format!("{PREFIX}{}", BASE64URL_NOPAD.encode(&blob)))
+}
+
+/// То же с заданным nonce: для сред без системного ГСЧ (WASM берёт его из `crypto`).
+pub fn export_text_with_nonce(
+    index: &Index,
+    key: &AppKey,
+    nonce: &[u8; NONCE_LEN],
+) -> Result<String> {
+    let blob = index.encrypt_with_nonce(&key.index_key(), nonce)?;
     Ok(format!("{PREFIX}{}", BASE64URL_NOPAD.encode(&blob)))
 }
 

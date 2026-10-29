@@ -74,3 +74,26 @@ fn publisher_key_roundtrip() {
     assert_eq!(parsed, vk);
     assert!(publisher_key("abcd").is_err());
 }
+
+#[test]
+fn issued_dates() {
+    let date = |issued_day| {
+        License {
+            issued_day,
+            ..lic(1)
+        }
+        .issued_date()
+    };
+    assert_eq!(date(0), "2026-01-01");
+    assert_eq!(date(58), "2026-02-28");
+    assert_eq!(date(59), "2026-03-01");
+    assert_eq!(date(297), "2026-10-25");
+    assert_eq!(date(365 + 31 + 28), "2027-03-01");
+}
+
+#[test]
+fn built_in_publisher_key_is_valid() {
+    assert!(bip39_pm::license::publisher_key(bip39_pm::license::PUBLISHER_KEY).is_ok());
+    // Ключ чужого издателя встроенная проверка не принимает.
+    assert!(bip39_pm::license::verify_pro(&lic(1).issue(&signer())).is_err());
+}

@@ -21,6 +21,7 @@
     <div class="brand"><img src="icon.svg" alt="" width="28" height="28"> ManagerBIP</div>
     <div id="session" hidden>
       <span id="demo-badge" class="badge" hidden>Обучение</span>
+      <button id="pro-badge" class="badge pro-badge" hidden>Pro</button>
       <span class="muted fp">отпечаток <b id="fingerprint"></b></span>
       <button id="lock" class="link">Выйти</button>
     </div>
@@ -215,6 +216,12 @@
             <label><input id="digits" type="checkbox" checked> 0-9</label>
             <label><input id="symbols" type="checkbox" checked> !#$</label>
           </div>
+          <div class="sub-head">Шаблоны правил <span class="pro-tag">Pro</span></div>
+          <div id="templates" class="chips"></div>
+          <div class="row-links">
+            <button id="template-save" class="link">Сохранить как шаблон</button>
+            <button id="default-save" class="link">Сделать правилом для новых сайтов</button>
+          </div>
         </details>
 
         <div id="password-box" class="password">
@@ -241,6 +248,70 @@
         <input id="filter" placeholder="Поиск" autocomplete="off" hidden>
         <ul id="accounts"></ul>
         <p id="empty" class="muted">Индекс пуст. Сохраняйте сюда сайты с нестандартной версией или политикой: остальные пароли восстановятся и без него.</p>
+      </div>
+
+      <div id="secrets-card" class="card">
+        <div class="list-head">
+          <h2>Секреты <span class="pro-tag">Pro</span></h2>
+        </div>
+        <p class="hint">PIN-коды, кодовые слова, пароли Wi‑Fi и ключи SSH из той же seed-фразы. Сохраняются только метка и версия.</p>
+        <div class="grid">
+          <label>Вид
+            <select id="secret-kind">
+              <option value="pin">PIN-код</option>
+              <option value="words">Кодовые слова</option>
+              <option value="wifi">Пароль Wi‑Fi</option>
+              <option value="ssh">Ключ SSH</option>
+            </select>
+          </label>
+          <label id="secret-size-label"><span id="secret-size-name">Цифр</span> <input id="secret-size" type="number" min="4" max="12" value="4"></label>
+        </div>
+        <label for="secret-label">Метка</label>
+        <input id="secret-label" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="например, карта Сбер">
+        <label for="secret-counter">Версия</label>
+        <input id="secret-counter" type="number" min="1" value="1">
+        <button id="secret-get" class="primary wide">Получить</button>
+        <div id="secret-out" hidden>
+          <textarea id="secret-value" rows="1" readonly aria-label="Секрет"></textarea>
+          <p id="secret-public-wrap" class="hint" hidden>Открытый ключ для сервера: <b id="secret-public"></b></p>
+          <div class="actions">
+            <button id="secret-copy">Копировать</button>
+            <button id="secret-save">Сохранить в список</button>
+          </div>
+        </div>
+        <ul id="secrets" class="list"></ul>
+      </div>
+
+      <div id="transfer-card" class="card">
+        <h2>Перенос и копия <span class="pro-tag">Pro</span></h2>
+        <p class="hint">Код переноса содержит список сайтов, секретов и шаблонов, зашифрованный ключом вашей фразы. Открыть его сможет только ManagerBIP с той же фразой: на телефоне или в другом браузере.</p>
+        <div class="actions">
+          <button id="transfer-show">Показать код</button>
+          <button id="transfer-copy">Копировать код</button>
+        </div>
+        <textarea id="transfer-code" rows="3" readonly hidden aria-label="Код переноса"></textarea>
+        <label for="transfer-input">Принять код с другого устройства</label>
+        <textarea id="transfer-input" rows="2" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="PMX1:…"></textarea>
+        <button id="transfer-import" class="wide">Добавить в список</button>
+      </div>
+
+      <div id="pro-card" class="card">
+        <h2>ManagerBIP Pro</h2>
+        <p id="pro-status" class="pro-status"></p>
+        <ul class="facts">
+          <li><b>Секреты.</b> PIN-коды, кодовые слова, пароли Wi‑Fi и ключи SSH.</li>
+          <li><b>Шаблоны правил</b> и своё правило для новых сайтов.</li>
+          <li><b>Перенос кодом</b> между браузером и телефоном.</li>
+          <li><b>Профили и скрытый профиль</b> в мобильном приложении.</li>
+        </ul>
+        <div id="pro-activate-box">
+          <label for="pro-key">Ключ Pro</label>
+          <input id="pro-key" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="MBIP-XXXX-XXXX-…">
+          <button id="pro-activate" class="primary wide">Активировать</button>
+          <p class="hint">Разовая покупка, без подписки. Ключ проверяется без интернета и подходит и для приложения на телефоне.</p>
+          <div id="pro-shops" class="row-links"></div>
+        </div>
+        <button id="pro-forget" class="link danger" hidden>Удалить ключ из этого браузера</button>
       </div>
 
       <div id="vault-card" class="card">
