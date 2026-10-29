@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../state/app_scope.dart';
+import '../l10n/tr.dart';
 
 /// Подсказка на экране. В обычном режиме — коротко, в учебном — подробно.
 class Hint extends StatelessWidget {
@@ -59,7 +60,9 @@ class LearningBanner extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
           child: Text(
-            'Учебный режим: тестовая фраза, пароли не настоящие, ничего не сохраняется',
+            tr(
+              'Учебный режим: тестовая фраза, пароли не настоящие, ничего не сохраняется',
+            ),
             textAlign: TextAlign.center,
             style: TextStyle(color: scheme.onTertiary, fontSize: 12),
           ),

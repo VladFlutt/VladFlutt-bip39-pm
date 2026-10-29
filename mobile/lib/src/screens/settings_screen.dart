@@ -8,6 +8,8 @@ import 'default_policy_screen.dart';
 import 'profiles_screen.dart';
 import 'pro_screen.dart';
 import 'transfer_screen.dart';
+import '../l10n/tr.dart';
+import '../ui/language_picker.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -17,18 +19,20 @@ class SettingsScreen extends StatelessWidget {
     final ok = await showDialog<bool>(
       context: context,
       builder: (c) => AlertDialog(
-        title: const Text('Забыть это устройство?'),
-        content: const Text(
-          'Ключ и список сайтов будут удалены с телефона. Пароли можно будет восстановить только по seed-фразе.',
+        title: Text(tr('Забыть это устройство?')),
+        content: Text(
+          tr(
+            'Ключ и список сайтов будут удалены с телефона. Пароли можно будет восстановить только по seed-фразе.',
+          ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(c, false),
-            child: const Text('Отмена'),
+            child: Text(tr('Отмена')),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(c, true),
-            child: const Text('Удалить'),
+            child: Text(tr('Удалить')),
           ),
         ],
       ),
@@ -51,11 +55,16 @@ class SettingsScreen extends StatelessWidget {
         backgroundColor: Colors.transparent,
         appBar: AppBar(
           backgroundColor: Colors.transparent,
-          title: const Text('Настройки'),
+          title: Text(tr('Настройки')),
         ),
         body: ListView(
           padding: const EdgeInsets.all(16),
           children: [
+            ListTile(
+              leading: const Icon(Icons.translate),
+              title: Text(tr('Язык')),
+              trailing: const LanguageButton(),
+            ),
             ListTile(
               key: const Key('open-pro'),
               leading: Icon(
@@ -64,7 +73,7 @@ class SettingsScreen extends StatelessWidget {
               ),
               title: const Text('ManagerBIP Pro'),
               subtitle: Text(
-                state.isPro ? 'Активирован' : 'Ввести или купить ключ',
+                state.isPro ? tr('Активирован') : tr('Ввести или купить ключ'),
               ),
               trailing: const Icon(Icons.chevron_right),
               onTap: () => _push(context, const ProScreen()),
@@ -72,19 +81,22 @@ class SettingsScreen extends StatelessWidget {
             ListTile(
               key: const Key('open-profiles'),
               leading: const Icon(Icons.people_outline),
-              title: const Text('Профили'),
-              subtitle: Text('Открыт: ${state.profile.name}'),
+              title: Text(tr('Профили')),
+              subtitle: Text(tr('Открыт: {0}', [state.profile.title])),
               trailing: const ProBadge(),
               onTap: () => _push(context, const ProfilesScreen()),
             ),
             ListTile(
               key: const Key('open-transfer'),
               leading: const Icon(Icons.sync_alt),
-              title: const Text('Перенос и резервная копия'),
-              subtitle: const Text('QR или код для другого телефона'),
+              title: Text(tr('Перенос и резервная копия')),
+              subtitle: Text(tr('QR или код для другого телефона')),
               trailing: const ProBadge(),
               onTap: () async {
-                if (await requirePro(context, 'Перенос и резервная копия') &&
+                if (await requirePro(
+                      context,
+                      tr('Перенос и резервная копия'),
+                    ) &&
                     context.mounted) {
                   _push(context, const TransferScreen());
                 }
@@ -93,11 +105,11 @@ class SettingsScreen extends StatelessWidget {
             ListTile(
               key: const Key('open-default-policy'),
               leading: const Icon(Icons.tune),
-              title: const Text('Правило для новых сайтов'),
+              title: Text(tr('Правило для новых сайтов')),
               subtitle: Text(state.newSitePolicy.canonical()),
               trailing: const ProBadge(),
               onTap: () async {
-                if (await requirePro(context, 'Правило по умолчанию') &&
+                if (await requirePro(context, tr('Правило по умолчанию')) &&
                     context.mounted) {
                   _push(context, const DefaultPolicyScreen());
                 }
@@ -106,7 +118,7 @@ class SettingsScreen extends StatelessWidget {
             const Divider(),
             ListTile(
               leading: const Icon(Icons.fingerprint),
-              title: const Text('Отпечаток seed'),
+              title: Text(tr('Отпечаток seed')),
               subtitle: Text(
                 state.fingerprint,
                 key: const Key('settings-fingerprint'),
@@ -116,17 +128,19 @@ class SettingsScreen extends StatelessWidget {
               leading: Icon(
                 state.learning ? Icons.school_outlined : Icons.lock_outline,
               ),
-              title: Text(state.learning ? 'Режим обучения' : 'Обычный режим'),
-              subtitle: const Text('Сменить режим'),
+              title: Text(
+                state.learning ? tr('Режим обучения') : tr('Обычный режим'),
+              ),
+              subtitle: Text(tr('Сменить режим')),
               onTap: () {
                 Navigator.of(context).popUntil((r) => r.isFirst);
                 state.backToModeChoice();
               },
             ),
-            const Hint(
-              learn:
-                  'Отпечаток сверяют после восстановления на новом устройстве: те же три слова — '
-                  'значит, фраза и passphrase введены верно.',
+            Hint(
+              learn: tr(
+                'Отпечаток сверяют после восстановления на новом устройстве: те же три слова — значит, фраза и passphrase введены верно.',
+              ),
             ),
             const Divider(),
             ListTile(
@@ -134,7 +148,7 @@ class SettingsScreen extends StatelessWidget {
                 Icons.delete_outline,
                 color: Theme.of(context).colorScheme.error,
               ),
-              title: const Text('Забыть это устройство'),
+              title: Text(tr('Забыть это устройство')),
               onTap: () => _forget(context),
             ),
           ],

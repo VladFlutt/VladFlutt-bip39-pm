@@ -12,6 +12,7 @@ import '../services/qr_frames.dart';
 import '../state/app_scope.dart';
 import '../ui/hint.dart';
 import '../ui/wallpaper.dart';
+import '../l10n/tr.dart';
 
 /// Перенос и резервная копия списка сайтов, секретов и шаблонов текущего профиля.
 class TransferScreen extends StatefulWidget {
@@ -44,7 +45,7 @@ class _TransferScreenState extends State<TransferScreen> {
         );
       }
     } on AnyhowException catch (e) {
-      setState(() => _error = e.message.replaceFirst('ошибка индекса: ', ''));
+      setState(() => _error = trError(e));
     }
   }
 
@@ -65,13 +66,15 @@ class _TransferScreenState extends State<TransferScreen> {
         backgroundColor: Colors.transparent,
         appBar: AppBar(
           backgroundColor: Colors.transparent,
-          title: const Text('Перенос и копия'),
+          title: Text(tr('Перенос и копия')),
         ),
         body: ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            Text('Отправить с этого телефона', style: text.titleMedium),
-            Text('Профиль «${state.profile.name}», записей: $count'),
+            Text(tr('Отправить с этого телефона'), style: text.titleMedium),
+            Text(
+              tr('Профиль «{0}», записей: {1}', [state.profile.title, count]),
+            ),
             const SizedBox(height: 8),
             Wrap(
               spacing: 8,
@@ -80,7 +83,7 @@ class _TransferScreenState extends State<TransferScreen> {
                 FilledButton.icon(
                   key: const Key('show-qr'),
                   icon: const Icon(Icons.qr_code_2),
-                  label: const Text('Показать QR'),
+                  label: Text(tr('Показать QR')),
                   onPressed: () => Navigator.of(context).push(
                     MaterialPageRoute<void>(
                       builder: (_) => QrScreen(code: state.exportCode()),
@@ -90,47 +93,45 @@ class _TransferScreenState extends State<TransferScreen> {
                 OutlinedButton.icon(
                   key: const Key('copy-code'),
                   icon: const Icon(Icons.copy),
-                  label: const Text('Копировать код'),
+                  label: Text(tr('Копировать код')),
                   onPressed: () async {
                     await Clipboard.setData(
                       ClipboardData(text: state.exportCode()),
                     );
                     if (context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Код переноса скопирован'),
-                        ),
+                        SnackBar(content: Text(tr('Код переноса скопирован'))),
                       );
                     }
                   },
                 ),
                 OutlinedButton.icon(
                   icon: const Icon(Icons.share),
-                  label: const Text('Поделиться'),
+                  label: Text(tr('Поделиться')),
                   onPressed: () => SharePlus.instance.share(
                     ShareParams(
                       text: state.exportCode(),
-                      subject: 'ManagerBIP: код переноса',
+                      subject: tr('ManagerBIP: код переноса'),
                     ),
                   ),
                 ),
               ],
             ),
-            const Hint(
-              short:
-                  'Код зашифрован ключом из вашей фразы: открыть его сможет только ManagerBIP '
-                  'с той же фразой и passphrase. Его можно хранить в облаке как резервную копию.',
-              learn:
-                  'Пароли восстанавливаются из одной фразы, но номера версий, особые правила, '
-                  'секреты и шаблоны живут в списке. Код переноса сохраняет именно их.',
+            Hint(
+              short: tr(
+                'Код зашифрован ключом из вашей фразы: открыть его сможет только ManagerBIP с той же фразой и passphrase. Его можно хранить в облаке как резервную копию.',
+              ),
+              learn: tr(
+                'Пароли восстанавливаются из одной фразы, но номера версий, особые правила, секреты и шаблоны живут в списке. Код переноса сохраняет именно их.',
+              ),
             ),
             const Divider(height: 32),
-            Text('Принять на этот телефон', style: text.titleMedium),
+            Text(tr('Принять на этот телефон'), style: text.titleMedium),
             const SizedBox(height: 8),
             FilledButton.tonalIcon(
               key: const Key('scan-qr'),
               icon: const Icon(Icons.qr_code_scanner),
-              label: const Text('Сканировать QR'),
+              label: Text(tr('Сканировать QR')),
               onPressed: _scan,
             ),
             const SizedBox(height: 12),
@@ -142,7 +143,7 @@ class _TransferScreenState extends State<TransferScreen> {
               autocorrect: false,
               enableSuggestions: false,
               decoration: InputDecoration(
-                hintText: 'или вставьте код PMX1:…',
+                hintText: tr('или вставьте код PMX1:…'),
                 border: const OutlineInputBorder(),
                 errorText: _error,
               ),
@@ -154,12 +155,12 @@ class _TransferScreenState extends State<TransferScreen> {
               onPressed: _paste.text.trim().isEmpty
                   ? null
                   : () => _import(_paste.text),
-              child: const Text('Добавить в список'),
+              child: Text(tr('Добавить в список')),
             ),
-            const Hint(
-              short:
-                  'Записи добавляются к вашим. Если сайт есть в обоих списках, '
-                  'остаётся более новая версия пароля.',
+            Hint(
+              short: tr(
+                'Записи добавляются к вашим. Если сайт есть в обоих списках, остаётся более новая версия пароля.',
+              ),
             ),
           ],
         ),
@@ -168,8 +169,10 @@ class _TransferScreenState extends State<TransferScreen> {
   }
 }
 
-String importSummary(MergeResult r) =>
-    'Добавлено: ${r.added}, обновлено: ${r.updated}, без изменений: ${r.kept}';
+String importSummary(MergeResult r) => tr(
+  'Добавлено: {0}, обновлено: {1}, без изменений: {2}',
+  [r.added, r.updated, r.kept],
+);
 
 /// QR-кадры кода переноса по очереди; второй телефон собирает их в любом порядке.
 class QrScreen extends StatefulWidget {
@@ -206,7 +209,7 @@ class _QrScreenState extends State<QrScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('QR для переноса')),
+      appBar: AppBar(title: Text(tr('QR для переноса'))),
       body: Center(
         child: Padding(
           padding: const EdgeInsets.all(24),
@@ -222,11 +225,12 @@ class _QrScreenState extends State<QrScreen> {
                 ),
               ),
               const SizedBox(height: 16),
-              Text('Кадр ${_i + 1} из ${_frames.length}'),
+              Text(tr('Кадр {0} из {1}', [_i + 1, _frames.length])),
               const SizedBox(height: 8),
-              const Text(
-                'На втором телефоне: ManagerBIP → Настройки → Перенос и копия → Сканировать QR. '
-                'Держите камеру, пока не соберутся все кадры.',
+              Text(
+                tr(
+                  'На втором телефоне: ManagerBIP → Настройки → Перенос и копия → Сканировать QR. Держите камеру, пока не соберутся все кадры.',
+                ),
                 textAlign: TextAlign.center,
               ),
             ],
@@ -269,7 +273,7 @@ class _ScanScreenState extends State<ScanScreen> {
   Widget build(BuildContext context) {
     final total = _collector.total;
     return Scaffold(
-      appBar: AppBar(title: const Text('Сканировать QR')),
+      appBar: AppBar(title: Text(tr('Сканировать QR'))),
       body: Column(
         children: [
           Expanded(
@@ -279,8 +283,10 @@ class _ScanScreenState extends State<ScanScreen> {
                 child: Padding(
                   padding: const EdgeInsets.all(24),
                   child: Text(
-                    'Камера недоступна: ${error.errorCode.name}. '
-                    'Разрешите доступ к камере или вставьте код вручную.',
+                    tr(
+                      'Камера недоступна: {0}. Разрешите доступ к камере или вставьте код вручную.',
+                      [error.errorCode.name],
+                    ),
                     textAlign: TextAlign.center,
                   ),
                 ),
@@ -297,8 +303,11 @@ class _ScanScreenState extends State<ScanScreen> {
                 const SizedBox(height: 8),
                 Text(
                   total == null
-                      ? 'Наведите камеру на QR на другом телефоне'
-                      : 'Собрано кадров: ${_collector.received} из $total',
+                      ? tr('Наведите камеру на QR на другом телефоне')
+                      : tr('Собрано кадров: {0} из {1}', [
+                          _collector.received,
+                          total,
+                        ]),
                 ),
               ],
             ),

@@ -3,15 +3,18 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../l10n/tr.dart';
+
 Timer? _wipe;
 
 /// Копирует секрет в буфер и стирает его через [ttl], если там всё ещё он.
 Future<void> copyWithWipe(
   BuildContext context,
   String value, {
-  String what = 'Скопировано',
+  String? what,
   Duration? ttl = const Duration(seconds: 30),
 }) async {
+  what ??= tr('Скопировано');
   await Clipboard.setData(ClipboardData(text: value));
   _wipe?.cancel();
   if (ttl != null) {
@@ -26,7 +29,9 @@ Future<void> copyWithWipe(
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          ttl == null ? what : '$what, сотрётся через ${ttl.inSeconds} с',
+          ttl == null
+              ? what
+              : tr('{0}, сотрётся через {1} с', [what, ttl.inSeconds]),
         ),
       ),
     );

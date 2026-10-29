@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../state/app_scope.dart';
 import '../ui/hint.dart';
+import '../l10n/tr.dart';
 
 class LockScreen extends StatefulWidget {
   const LockScreen({super.key});
@@ -26,7 +27,7 @@ class _LockScreenState extends State<LockScreen> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         leading: IconButton(
-          tooltip: 'Выбор режима',
+          tooltip: tr('Выбор режима'),
           icon: const Icon(Icons.arrow_back),
           onPressed: state.backToModeChoice,
         ),
@@ -41,7 +42,7 @@ class _LockScreenState extends State<LockScreen> {
               const Icon(Icons.fingerprint, size: 96),
               const SizedBox(height: 16),
               Text(
-                'ManagerBIP заблокирован',
+                tr('ManagerBIP заблокирован'),
                 textAlign: TextAlign.center,
                 style: Theme.of(context).textTheme.headlineSmall,
               ),
@@ -50,20 +51,20 @@ class _LockScreenState extends State<LockScreen> {
                 key: const Key('unlock'),
                 onPressed: _unlock,
                 icon: const Icon(Icons.lock_open),
-                label: const Text('Разблокировать'),
+                label: Text(tr('Разблокировать')),
               ),
               if (_failed) ...[
                 const SizedBox(height: 12),
-                const Text(
-                  'Не удалось подтвердить личность. Попробуйте ещё раз.',
+                Text(
+                  tr('Не удалось подтвердить личность. Попробуйте ещё раз.'),
                   textAlign: TextAlign.center,
                 ),
               ],
               const SizedBox(height: 16),
-              const Hint(
-                learn:
-                    'На телефоне хранится не сама seed-фраза, а ключ приложения, выведенный из неё. '
-                    'Биометрия или код устройства открывают этот ключ.',
+              Hint(
+                learn: tr(
+                  'На телефоне хранится не сама seed-фраза, а ключ приложения, выведенный из неё. Биометрия или код устройства открывают этот ключ.',
+                ),
               ),
             ],
           ),

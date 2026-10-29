@@ -8,7 +8,9 @@ import '../rust/api/pm.dart';
 import '../services/biometric.dart';
 import '../services/index_store.dart';
 import '../services/key_store.dart';
+import '../services/lang_store.dart';
 import '../services/license_store.dart';
+import '../l10n/tr.dart';
 
 /// Режим, который пользователь выбирает при запуске.
 enum AppMode {
@@ -36,6 +38,9 @@ class Profile {
 
   static const main = Profile('main', 'Основной');
 
+  /// Имя для показа: у основного профиля — на языке интерфейса.
+  String get title => id == main.id && name == main.name ? tr(name) : name;
+
   Map<String, String> toJson() => {'id': id, 'name': name};
 
   static Profile fromJson(Map<String, dynamic> j, {bool hidden = false}) =>
@@ -49,13 +54,15 @@ class AppState extends ChangeNotifier {
   final IndexStore Function(AppMode) indexStoreFor;
   final Biometric biometric;
   final LicenseStore licenseStore;
+  final LangStore langStore;
 
   AppState({
     required this.keyStoreFor,
     required this.indexStoreFor,
     required this.biometric,
     required this.licenseStore,
-  });
+    LangStore? langStore,
+  }) : langStore = langStore ?? MemoryLangStore();
 
   /// Хранилища по умолчанию: настоящие для обычного режима, в памяти — для учебного.
   factory AppState.device() {
@@ -66,7 +73,21 @@ class AppState extends ChangeNotifier {
       indexStoreFor: (m) => m == AppMode.normal ? FileIndexStore() : learnIndex,
       biometric: DeviceBiometric(),
       licenseStore: SecureLicenseStore(),
+      langStore: SecureLangStore(),
     );
+  }
+
+  /// Язык из настроек; без выбора — язык системы.
+  Future<void> loadLang() async {
+    final saved = await langStore.read();
+    appLang = AppLang.values.asNameMap()[saved] ?? AppLang.system();
+    notifyListeners();
+  }
+
+  Future<void> setLang(AppLang lang) async {
+    appLang = lang;
+    await langStore.write(lang.name);
+    notifyListeners();
   }
 
   Phase phase = Phase.chooseMode;
@@ -155,7 +176,7 @@ class AppState extends ChangeNotifier {
 
   /// Разблокировка всегда открывает основной профиль: скрытый — только кодом.
   Future<bool> unlock() async {
-    if (!await biometric.authenticate('Откройте ManagerBIP')) return false;
+    if (!await biometric.authenticate(tr('Откройте ManagerBIP'))) return false;
     final key = await _keys.read(Profile.main.id);
     if (key == null) {
       phase = Phase.onboarding;
@@ -192,7 +213,7 @@ class AppState extends ChangeNotifier {
   Future<void> switchProfile(Profile p) async {
     final key = await _keys.read(p.id);
     if (key == null) {
-      error = 'Ключ профиля «${p.name}» не найден';
+      error = tr('Ключ профиля «{0}» не найден', [p.title]);
       notifyListeners();
       return;
     }
@@ -201,7 +222,10 @@ class AppState extends ChangeNotifier {
 
   /// Новый профиль из другой фразы или той же фразы с другой passphrase.
   Future<void> addProfile(String name, Vault v) async {
-    final p = Profile(_newId(), name.trim().isEmpty ? 'Профиль' : name.trim());
+    final p = Profile(
+      _newId(),
+      name.trim().isEmpty ? tr('Профиль') : name.trim(),
+    );
     await _keys.write(p.id, v.keyBytes());
     profiles = [...profiles, p];
     await _saveProfiles();
@@ -358,7 +382,7 @@ class AppState extends ChangeNotifier {
       error = null;
     } catch (e) {
       index = _emptyIndex;
-      error = 'Индекс не открылся: $e';
+      error = tr('Индекс не открылся: {0}', [trError(e)]);
     }
   }
 

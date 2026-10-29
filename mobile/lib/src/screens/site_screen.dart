@@ -8,6 +8,7 @@ import '../state/app_scope.dart';
 import '../ui/hint.dart';
 import '../ui/policy_editor.dart';
 import '../ui/wallpaper.dart';
+import '../l10n/tr.dart';
 
 /// Через сколько стирать скопированный пароль из буфера обмена.
 const clipboardTtl = Duration(seconds: 30);
@@ -51,7 +52,7 @@ class _SiteScreenState extends State<SiteScreen> {
       );
       return (d, null);
     } catch (e) {
-      return (null, '$e');
+      return (null, trError(e));
     }
   }
 
@@ -68,7 +69,9 @@ class _SiteScreenState extends State<SiteScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Пароль скопирован, сотрётся через ${clipboardTtl.inSeconds} с',
+            tr('Пароль скопирован, сотрётся через {0} с', [
+              clipboardTtl.inSeconds,
+            ]),
           ),
         ),
       );
@@ -92,7 +95,9 @@ class _SiteScreenState extends State<SiteScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            rotate ? 'Новый пароль, версия $counter' : 'Сохранено в списке',
+            rotate
+                ? tr('Новый пароль, версия {0}', [counter])
+                : tr('Сохранено в списке'),
           ),
         ),
       );
@@ -112,11 +117,11 @@ class _SiteScreenState extends State<SiteScreen> {
         backgroundColor: Colors.transparent,
         appBar: AppBar(
           backgroundColor: Colors.transparent,
-          title: Text(widget.account?.domain ?? 'Новый сайт'),
+          title: Text(widget.account?.domain ?? tr('Новый сайт')),
           actions: [
             if (saved != null)
               IconButton(
-                tooltip: 'Убрать из списка',
+                tooltip: tr('Убрать из списка'),
                 icon: const Icon(Icons.delete_outline),
                 onPressed: () async {
                   await state.remove(saved);
@@ -133,9 +138,9 @@ class _SiteScreenState extends State<SiteScreen> {
               controller: _site,
               keyboardType: TextInputType.url,
               autocorrect: false,
-              decoration: const InputDecoration(
-                labelText: 'Сайт',
-                hintText: 'github.com или ссылка',
+              decoration: InputDecoration(
+                labelText: tr('Сайт'),
+                hintText: tr('github.com или ссылка'),
                 border: OutlineInputBorder(),
               ),
               onChanged: (_) => setState(() {}),
@@ -146,8 +151,8 @@ class _SiteScreenState extends State<SiteScreen> {
               controller: _login,
               keyboardType: TextInputType.emailAddress,
               autocorrect: false,
-              decoration: const InputDecoration(
-                labelText: 'Логин или e-mail',
+              decoration: InputDecoration(
+                labelText: tr('Логин или e-mail'),
                 border: OutlineInputBorder(),
               ),
               onChanged: (_) => setState(() {}),
@@ -156,14 +161,14 @@ class _SiteScreenState extends State<SiteScreen> {
               Padding(
                 padding: const EdgeInsets.only(top: 6, left: 12),
                 child: Text(
-                  'Сайт: ${derived.domain}',
+                  tr('Сайт: {0}', [derived.domain]),
                   style: TextStyle(color: scheme.primary),
                 ),
               ),
-            const Hint(
-              learn:
-                  'Адрес сокращается до основного домена: «https://www.github.com/login» и «github.com» '
-                  'дают один и тот же пароль. Регистр букв в логине тоже не важен.',
+            Hint(
+              learn: tr(
+                'Адрес сокращается до основного домена: «https://www.github.com/login» и «github.com» дают один и тот же пароль. Регистр букв в логине тоже не важен.',
+              ),
             ),
             if (error != null)
               Text(error, style: TextStyle(color: scheme.error)),
@@ -189,7 +194,7 @@ class _SiteScreenState extends State<SiteScreen> {
                             ),
                           ),
                           IconButton(
-                            tooltip: _show ? 'Скрыть' : 'Показать',
+                            tooltip: _show ? tr('Скрыть') : tr('Показать'),
                             icon: Icon(
                               _show ? Icons.visibility_off : Icons.visibility,
                             ),
@@ -197,7 +202,7 @@ class _SiteScreenState extends State<SiteScreen> {
                           ),
                           IconButton(
                             key: const Key('copy'),
-                            tooltip: 'Копировать',
+                            tooltip: tr('Копировать'),
                             icon: const Icon(Icons.copy),
                             onPressed: () => _copy(derived.password),
                           ),
@@ -205,17 +210,20 @@ class _SiteScreenState extends State<SiteScreen> {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'Проверка: ${derived.checkWords} · версия ${derived.counter}',
+                        tr('Проверка: {0} · версия {1}', [
+                          derived.checkWords,
+                          derived.counter,
+                        ]),
                         key: const Key('check'),
                       ),
                     ],
                   ),
                 ),
               ),
-              const Hint(
-                learn:
-                    'Два проверочных слова помогают сверить пароль на разных устройствах, не показывая его. '
-                    'Версия растёт, когда вы меняете пароль на сайте.',
+              Hint(
+                learn: tr(
+                  'Два проверочных слова помогают сверить пароль на разных устройствах, не показывая его. Версия растёт, когда вы меняете пароль на сайте.',
+                ),
               ),
               PolicyEditor(
                 policy: _policy,
@@ -229,7 +237,9 @@ class _SiteScreenState extends State<SiteScreen> {
                       key: const Key('save'),
                       onPressed: () => _save(derived),
                       icon: const Icon(Icons.bookmark_add_outlined),
-                      label: Text(saved == null ? 'В список' : 'Обновить'),
+                      label: Text(
+                        saved == null ? tr('В список') : tr('Обновить'),
+                      ),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -238,13 +248,15 @@ class _SiteScreenState extends State<SiteScreen> {
                       key: const Key('rotate'),
                       onPressed: () => _save(derived, rotate: true),
                       icon: const Icon(Icons.autorenew),
-                      label: const Text('Сменить'),
+                      label: Text(tr('Сменить')),
                     ),
                   ),
                 ],
               ),
-              const Hint(
-                short: '«Сменить» выдаёт новый пароль для этого сайта. Старый перестанет совпадать.',
+              Hint(
+                short: tr(
+                  '«Сменить» выдаёт новый пароль для этого сайта. Старый перестанет совпадать.',
+                ),
               ),
             ],
           ],

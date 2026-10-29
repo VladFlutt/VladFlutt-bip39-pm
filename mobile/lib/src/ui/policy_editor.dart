@@ -4,16 +4,17 @@ import '../rust/api/pm.dart';
 import '../state/app_scope.dart';
 import 'hint.dart';
 import 'pro_gate.dart';
+import '../l10n/tr.dart';
 
 /// Готовые правила. Сайты, которые не принимают символы или длинные пароли, обычно
 /// укладываются в одно из них.
-final builtinTemplates = [
-  RuleTemplate(name: 'Стандарт', policy: _p(20)),
-  RuleTemplate(name: 'Максимум', policy: _p(32)),
-  RuleTemplate(name: 'Без символов', policy: _p(20, symbols: false)),
-  RuleTemplate(name: 'Короткий', policy: _p(12)),
+List<RuleTemplate> get builtinTemplates => [
+  RuleTemplate(name: tr('Стандарт'), policy: _p(20)),
+  RuleTemplate(name: tr('Максимум'), policy: _p(32)),
+  RuleTemplate(name: tr('Без символов'), policy: _p(20, symbols: false)),
+  RuleTemplate(name: tr('Короткий'), policy: _p(12)),
   RuleTemplate(
-    name: 'Только цифры',
+    name: tr('Только цифры'),
     policy: _p(8, lower: false, upper: false, symbols: false),
   ),
 ];
@@ -36,14 +37,14 @@ class PolicyEditor extends StatelessWidget {
   final PasswordPolicy policy;
   final ValueChanged<PasswordPolicy> onChanged;
   final bool initiallyExpanded;
-  final String title;
+  final String? title;
 
   const PolicyEditor({
     super.key,
     required this.policy,
     required this.onChanged,
     this.initiallyExpanded = false,
-    this.title = 'Правила пароля',
+    this.title,
   });
 
   PasswordPolicy _with({
@@ -61,29 +62,29 @@ class PolicyEditor extends StatelessWidget {
   );
 
   Future<void> _saveTemplate(BuildContext context) async {
-    if (!await requirePro(context, 'Свои шаблоны правил')) return;
+    if (!await requirePro(context, tr('Свои шаблоны правил'))) return;
     if (!context.mounted) return;
     final state = AppScope.of(context);
     final name = TextEditingController();
     final ok = await showDialog<bool>(
       context: context,
       builder: (c) => AlertDialog(
-        title: const Text('Сохранить как шаблон'),
+        title: Text(tr('Сохранить как шаблон')),
         content: TextField(
           key: const Key('template-name'),
           controller: name,
           autofocus: true,
-          decoration: const InputDecoration(hintText: 'Например, «Банк»'),
+          decoration: InputDecoration(hintText: tr('Например, «Банк»')),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(c, false),
-            child: const Text('Отмена'),
+            child: Text(tr('Отмена')),
           ),
           FilledButton(
             key: const Key('template-save'),
             onPressed: () => Navigator.pop(c, true),
-            child: const Text('Сохранить'),
+            child: Text(tr('Сохранить')),
           ),
         ],
       ),
@@ -96,7 +97,7 @@ class PolicyEditor extends StatelessWidget {
   }
 
   Future<void> _apply(BuildContext context, RuleTemplate t) async {
-    if (await requirePro(context, 'Шаблоны правил')) onChanged(t.policy);
+    if (await requirePro(context, tr('Шаблоны правил'))) onChanged(t.policy);
   }
 
   @override
@@ -115,7 +116,7 @@ class PolicyEditor extends StatelessWidget {
     return Card(
       child: ExpansionTile(
         initiallyExpanded: initiallyExpanded,
-        title: Text(title),
+        title: Text(title ?? tr('Правила пароля')),
         subtitle: Text(policy.canonical()),
         children: [
           Padding(
@@ -138,7 +139,7 @@ class PolicyEditor extends StatelessWidget {
                 ActionChip(
                   key: const Key('template-add'),
                   avatar: const Icon(Icons.add, size: 18),
-                  label: const Text('Шаблон'),
+                  label: Text(tr('Шаблон')),
                   onPressed: () => _saveTemplate(context),
                 ),
                 const Padding(
@@ -149,7 +150,7 @@ class PolicyEditor extends StatelessWidget {
             ),
           ),
           ListTile(
-            title: Text('Длина: ${policy.length}'),
+            title: Text(tr('Длина: {0}', [policy.length])),
             subtitle: Slider(
               min: 8,
               max: 64,
@@ -159,29 +160,31 @@ class PolicyEditor extends StatelessWidget {
             ),
           ),
           SwitchListTile(
-            title: const Text('Строчные a–z'),
+            title: Text(tr('Строчные a–z')),
             value: policy.lower,
             onChanged: guard(policy.lower, (v) => _with(lower: v)),
           ),
           SwitchListTile(
-            title: const Text('Заглавные A–Z'),
+            title: Text(tr('Заглавные A–Z')),
             value: policy.upper,
             onChanged: guard(policy.upper, (v) => _with(upper: v)),
           ),
           SwitchListTile(
-            title: const Text('Цифры 0–9'),
+            title: Text(tr('Цифры 0–9')),
             value: policy.digits,
             onChanged: guard(policy.digits, (v) => _with(digits: v)),
           ),
           SwitchListTile(
-            title: const Text('Символы !#\$%…'),
+            title: Text(tr('Символы !#\$%…')),
             value: policy.symbols,
             onChanged: guard(policy.symbols, (v) => _with(symbols: v)),
           ),
-          const Padding(
+          Padding(
             padding: EdgeInsets.fromLTRB(16, 0, 16, 12),
             child: Hint(
-              short: 'Меняйте правила, только если сайт не принимает пароль. Они сохраняются в списке.',
+              short: tr(
+                'Меняйте правила, только если сайт не принимает пароль. Они сохраняются в списке.',
+              ),
             ),
           ),
         ],

@@ -6,6 +6,7 @@ import '../ui/hint.dart';
 import '../ui/pro_gate.dart';
 import '../ui/wallpaper.dart';
 import 'onboarding_screen.dart';
+import '../l10n/tr.dart';
 
 Future<String?> askText(
   BuildContext context, {
@@ -13,7 +14,7 @@ Future<String?> askText(
   String? hint,
   String? initial,
   bool obscure = false,
-  String action = 'Готово',
+  String? action,
   String? message,
 }) async {
   final c = TextEditingController(text: initial);
@@ -38,12 +39,12 @@ Future<String?> askText(
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(d, false),
-          child: const Text('Отмена'),
+          child: Text(tr('Отмена')),
         ),
         FilledButton(
           key: const Key('ask-ok'),
           onPressed: () => Navigator.pop(d, true),
-          child: Text(action),
+          child: Text(action ?? tr('Готово')),
         ),
       ],
     ),
@@ -59,14 +60,14 @@ class ProfilesScreen extends StatelessWidget {
   const ProfilesScreen({super.key});
 
   Future<void> _add(BuildContext context) async {
-    if (!await requirePro(context, 'Несколько профилей')) return;
+    if (!await requirePro(context, tr('Несколько профилей'))) return;
     if (!context.mounted) return;
     final state = AppScope.of(context);
     final name = await askText(
       context,
-      title: 'Новый профиль',
-      hint: 'Рабочий, Семья…',
-      action: 'Далее',
+      title: tr('Новый профиль'),
+      hint: tr('Рабочий, Семья…'),
+      action: tr('Далее'),
     );
     if (name == null || !context.mounted) return;
     await Navigator.of(context).push(
@@ -79,24 +80,23 @@ class ProfilesScreen extends StatelessWidget {
   }
 
   Future<void> _hide(BuildContext context) async {
-    if (!await requirePro(context, 'Скрытый профиль')) return;
+    if (!await requirePro(context, tr('Скрытый профиль'))) return;
     if (!context.mounted) return;
     final state = AppScope.of(context);
     final code = await askText(
       context,
-      title: 'Скрыть профиль «${state.profile.name}»',
-      message:
-          'Профиль пропадёт из списка. Открыть его можно будет только этим кодом: '
-          'Настройки → Профили → Открыть скрытый. Код не восстанавливается, '
-          'но профиль всегда можно добавить заново по его фразе.',
-      hint: 'Код, не меньше 4 символов',
+      title: tr('Скрыть профиль «{0}»', [state.profile.title]),
+      message: tr(
+        'Профиль пропадёт из списка. Открыть его можно будет только этим кодом: Настройки → Профили → Открыть скрытый. Код не восстанавливается, но профиль всегда можно добавить заново по его фразе.',
+      ),
+      hint: tr('Код, не меньше 4 символов'),
       obscure: true,
-      action: 'Скрыть',
+      action: tr('Скрыть'),
     );
     if (code == null || !context.mounted) return;
     if (code.length < 4) {
       ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Код слишком короткий')));
+          .showSnackBar(SnackBar(content: Text(tr('Код слишком короткий'))));
       return;
     }
     await state.hideProfile(code);
@@ -106,10 +106,10 @@ class ProfilesScreen extends StatelessWidget {
     final state = AppScope.of(context);
     final code = await askText(
       context,
-      title: 'Открыть скрытый профиль',
-      hint: 'Код',
+      title: tr('Открыть скрытый профиль'),
+      hint: tr('Код'),
       obscure: true,
-      action: 'Открыть',
+      action: tr('Открыть'),
     );
     if (code == null || !context.mounted) return;
     final ok = await state.openHidden(code);
@@ -118,14 +118,18 @@ class ProfilesScreen extends StatelessWidget {
       Navigator.of(context).popUntil((r) => r.isFirst);
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Профиль с таким кодом не найден')),
+        SnackBar(content: Text(tr('Профиль с таким кодом не найден'))),
       );
     }
   }
 
   Future<void> _rename(BuildContext context, Profile p) async {
     final state = AppScope.of(context);
-    final name = await askText(context, title: 'Название', initial: p.name);
+    final name = await askText(
+      context,
+      title: tr('Название'),
+      initial: p.title,
+    );
     if (name != null) await state.renameProfile(p, name);
   }
 
@@ -134,19 +138,21 @@ class ProfilesScreen extends StatelessWidget {
     final ok = await showDialog<bool>(
       context: context,
       builder: (c) => AlertDialog(
-        title: Text('Удалить профиль «${p.name}»?'),
-        content: const Text(
-          'Ключ и список профиля будут удалены с телефона. Пароли можно будет вернуть по его фразе.',
+        title: Text(tr('Удалить профиль «{0}»?', [p.title])),
+        content: Text(
+          tr(
+            'Ключ и список профиля будут удалены с телефона. Пароли можно будет вернуть по его фразе.',
+          ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(c, false),
-            child: const Text('Отмена'),
+            child: Text(tr('Отмена')),
           ),
           FilledButton(
             key: const Key('confirm-delete'),
             onPressed: () => Navigator.pop(c, true),
-            child: const Text('Удалить'),
+            child: Text(tr('Удалить')),
           ),
         ],
       ),
@@ -163,7 +169,7 @@ class ProfilesScreen extends StatelessWidget {
         backgroundColor: Colors.transparent,
         appBar: AppBar(
           backgroundColor: Colors.transparent,
-          title: const Text('Профили'),
+          title: Text(tr('Профили')),
         ),
         body: ListView(
           padding: const EdgeInsets.all(16),
@@ -179,9 +185,9 @@ class ProfilesScreen extends StatelessWidget {
                         ? Icons.radio_button_checked
                         : Icons.radio_button_unchecked,
                   ),
-                  title: Text(p.name),
+                  title: Text(p.title),
                   subtitle: p.hidden
-                      ? const Text('Скрытый, открыт сейчас')
+                      ? Text(tr('Скрытый, открыт сейчас'))
                       : null,
                   onTap: p.id == current.id
                       ? null
@@ -199,14 +205,14 @@ class ProfilesScreen extends StatelessWidget {
                       _ => null,
                     },
                     itemBuilder: (_) => [
-                      const PopupMenuItem(
+                      PopupMenuItem(
                         value: 'rename',
-                        child: Text('Переименовать'),
+                        child: Text(tr('Переименовать')),
                       ),
                       if (p.id != Profile.main.id)
-                        const PopupMenuItem(
+                        PopupMenuItem(
                           value: 'delete',
-                          child: Text('Удалить'),
+                          child: Text(tr('Удалить')),
                         ),
                     ],
                   ),
@@ -216,10 +222,10 @@ class ProfilesScreen extends StatelessWidget {
             OutlinedButton.icon(
               key: const Key('add-profile'),
               icon: const Icon(Icons.add),
-              label: const Row(
+              label: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text('Добавить профиль'),
+                  Text(tr('Добавить профиль')),
                   SizedBox(width: 8),
                   ProBadge(),
                 ],
@@ -231,30 +237,30 @@ class ProfilesScreen extends StatelessWidget {
               OutlinedButton.icon(
                 key: const Key('hide-profile'),
                 icon: const Icon(Icons.visibility_off_outlined),
-                label: Text('Скрыть «${current.name}»'),
+                label: Text(tr('Скрыть «{0}»', [current.title])),
                 onPressed: () => _hide(context),
               ),
             if (current.hidden)
               OutlinedButton.icon(
                 key: const Key('unhide-profile'),
                 icon: const Icon(Icons.visibility_outlined),
-                label: const Text('Показывать в списке'),
+                label: Text(tr('Показывать в списке')),
                 onPressed: state.unhideProfile,
               ),
             const SizedBox(height: 8),
             TextButton.icon(
               key: const Key('open-hidden'),
               icon: const Icon(Icons.key_outlined),
-              label: const Text('Открыть скрытый профиль'),
+              label: Text(tr('Открыть скрытый профиль')),
               onPressed: () => _openHidden(context),
             ),
-            const Hint(
-              short:
-                  'После блокировки телефон всегда открывает основной профиль. '
-                  'Скрытый профиль не виден, пока его не откроют кодом.',
-              learn:
-                  'Профиль — это отдельная фраза или та же фраза с другой passphrase. '
-                  'У каждого профиля свои пароли и свой список сайтов.',
+            Hint(
+              short: tr(
+                'После блокировки телефон всегда открывает основной профиль. Скрытый профиль не виден, пока его не откроют кодом.',
+              ),
+              learn: tr(
+                'Профиль — это отдельная фраза или та же фраза с другой passphrase. У каждого профиля свои пароли и свой список сайтов.',
+              ),
             ),
           ],
         ),

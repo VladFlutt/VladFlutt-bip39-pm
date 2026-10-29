@@ -8,6 +8,7 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await RustLib.init();
   final state = AppState.device();
+  await state.loadLang();
   await state.loadPro();
   runApp(ManagerBipApp(state: state));
 }

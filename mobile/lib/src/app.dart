@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'screens/accounts_screen.dart';
 import 'screens/lock_screen.dart';
@@ -6,6 +7,7 @@ import 'screens/mode_screen.dart';
 import 'screens/onboarding_screen.dart';
 import 'state/app_scope.dart';
 import 'state/app_state.dart';
+import 'l10n/tr.dart';
 import 'ui/hint.dart';
 import 'ui/wallpaper.dart';
 
@@ -22,6 +24,7 @@ class _ManagerBipAppState extends State<ManagerBipApp>
     with WidgetsBindingObserver {
   final _navigator = GlobalKey<NavigatorState>();
   Phase _phase = Phase.chooseMode;
+  AppLang _lang = appLang;
 
   @override
   void initState() {
@@ -44,6 +47,14 @@ class _ManagerBipAppState extends State<ManagerBipApp>
       _navigator.currentState?.popUntil((r) => r.isFirst);
     }
     _phase = phase;
+    if (_lang != appLang) {
+      setState(() => _lang = appLang);
+      // Тексты tr() не зависят от контекста: перестраиваем всё дерево, не трогая навигацию.
+      void rebuild(Element e) => e
+        ..markNeedsBuild()
+        ..visitChildren(rebuild);
+      (context as Element).visitChildren(rebuild);
+    }
   }
 
   /// Ушли в фон — ключ выгружается из памяти, вернуться можно только через биометрию.
@@ -73,6 +84,9 @@ class _ManagerBipAppState extends State<ManagerBipApp>
         debugShowCheckedModeBanner: false,
         theme: _theme(Brightness.light),
         darkTheme: _theme(Brightness.dark),
+        locale: Locale(_lang.name),
+        supportedLocales: [for (final l in AppLang.values) Locale(l.name)],
+        localizationsDelegates: GlobalMaterialLocalizations.delegates,
         builder: (context, child) => Column(
           children: [
             const LearningBanner(),

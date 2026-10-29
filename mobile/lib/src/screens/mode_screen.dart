@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../state/app_scope.dart';
 import '../state/app_state.dart';
+import '../l10n/tr.dart';
+import '../ui/language_picker.dart';
 
 /// Первый экран при каждом запуске: обычная работа или обучение.
 class ModeScreen extends StatelessWidget {
@@ -21,6 +23,10 @@ class ModeScreen extends StatelessWidget {
               shrinkWrap: true,
               padding: const EdgeInsets.all(24),
               children: [
+                const Align(
+                  alignment: Alignment.centerRight,
+                  child: LanguageButton(),
+                ),
                 const Icon(Icons.key_rounded, size: 64),
                 const SizedBox(height: 12),
                 Text(
@@ -30,7 +36,9 @@ class ModeScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Все пароли из одной seed-фразы BIP39. Без сервера и без облака.',
+                  tr(
+                    'Все пароли из одной seed-фразы BIP39. Без сервера и без облака.',
+                  ),
                   textAlign: TextAlign.center,
                   style: text.bodyLarge,
                 ),
@@ -38,16 +46,20 @@ class ModeScreen extends StatelessWidget {
                 _ModeCard(
                   key: const Key('mode-normal'),
                   icon: Icons.lock_outline,
-                  title: 'Обычный режим',
-                  subtitle: 'Ваша seed-фраза, настоящие пароли. Ключ хранится в защищённом хранилище телефона.',
+                  title: tr('Обычный режим'),
+                  subtitle: tr(
+                    'Ваша seed-фраза, настоящие пароли. Ключ хранится в защищённом хранилище телефона.',
+                  ),
                   onTap: () => state.chooseMode(AppMode.normal),
                 ),
                 const SizedBox(height: 12),
                 _ModeCard(
                   key: const Key('mode-learning'),
                   icon: Icons.school_outlined,
-                  title: 'Режим обучения',
-                  subtitle: 'Тестовая фраза и подсказки на каждом шаге. Можно пробовать что угодно: ничего не сохраняется.',
+                  title: tr('Режим обучения'),
+                  subtitle: tr(
+                    'Тестовая фраза и подсказки на каждом шаге. Можно пробовать что угодно: ничего не сохраняется.',
+                  ),
                   onTap: () => state.chooseMode(AppMode.learning),
                 ),
               ],

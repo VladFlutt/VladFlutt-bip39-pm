@@ -9,6 +9,7 @@ import 'profiles_screen.dart';
 import 'secret_screen.dart';
 import 'settings_screen.dart';
 import 'site_screen.dart';
+import '../l10n/tr.dart';
 
 enum _Tab { sites, secrets }
 
@@ -29,7 +30,7 @@ class _AccountsScreenState extends State<AccountsScreen> {
 
   Future<void> _add() async {
     if (_tab == _Tab.sites) return _push(const SiteScreen());
-    if (await requirePro(context, 'Секреты из фразы') && mounted) {
+    if (await requirePro(context, tr('Секреты из фразы')) && mounted) {
       _push(const SecretScreen());
     }
   }
@@ -40,7 +41,7 @@ class _AccountsScreenState extends State<AccountsScreen> {
     }
     return PopupMenuButton<Profile?>(
       key: const Key('profile-switch'),
-      tooltip: 'Профиль',
+      tooltip: tr('Профиль'),
       onSelected: (p) =>
           p == null ? _push(const ProfilesScreen()) : state.switchProfile(p),
       itemBuilder: (_) => [
@@ -48,16 +49,16 @@ class _AccountsScreenState extends State<AccountsScreen> {
           CheckedPopupMenuItem(
             value: p,
             checked: p.id == state.profile.id,
-            child: Text(p.name),
+            child: Text(p.title),
           ),
         const PopupMenuDivider(),
-        const PopupMenuItem(value: null, child: Text('Профили…')),
+        PopupMenuItem(value: null, child: Text(tr('Профили…'))),
       ],
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Flexible(
-            child: Text(state.profile.name, overflow: TextOverflow.ellipsis),
+            child: Text(state.profile.title, overflow: TextOverflow.ellipsis),
           ),
           const Icon(Icons.arrow_drop_down),
         ],
@@ -80,12 +81,12 @@ class _AccountsScreenState extends State<AccountsScreen> {
         title: _profileTitle(state),
         actions: [
           IconButton(
-            tooltip: 'Заблокировать',
+            tooltip: tr('Заблокировать'),
             icon: const Icon(Icons.lock_outline),
             onPressed: state.lock,
           ),
           IconButton(
-            tooltip: 'Настройки',
+            tooltip: tr('Настройки'),
             icon: const Icon(Icons.settings_outlined),
             onPressed: () => _push(const SettingsScreen()),
           ),
@@ -95,7 +96,7 @@ class _AccountsScreenState extends State<AccountsScreen> {
         key: const Key('add'),
         onPressed: _add,
         icon: const Icon(Icons.add),
-        label: Text(_tab == _Tab.sites ? 'Сайт' : 'Секрет'),
+        label: Text(_tab == _Tab.sites ? tr('Сайт') : tr('Секрет')),
       ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 96),
@@ -103,16 +104,16 @@ class _AccountsScreenState extends State<AccountsScreen> {
           SegmentedButton<_Tab>(
             key: const Key('tabs'),
             showSelectedIcon: false,
-            segments: const [
+            segments: [
               ButtonSegment(
                 value: _Tab.sites,
                 icon: Icon(Icons.language),
-                label: Text('Сайты', key: Key('tab-sites')),
+                label: Text(tr('Сайты'), key: Key('tab-sites')),
               ),
               ButtonSegment(
                 value: _Tab.secrets,
                 icon: Icon(Icons.key_outlined),
-                label: Text('Секреты', key: Key('tab-secrets')),
+                label: Text(tr('Секреты'), key: Key('tab-secrets')),
               ),
             ],
             selected: {_tab},
@@ -123,8 +124,8 @@ class _AccountsScreenState extends State<AccountsScreen> {
             decoration: InputDecoration(
               prefixIcon: const Icon(Icons.search),
               hintText: _tab == _Tab.sites
-                  ? 'Поиск по сайтам и логинам'
-                  : 'Поиск по секретам',
+                  ? tr('Поиск по сайтам и логинам')
+                  : tr('Поиск по секретам'),
               filled: true,
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(28),
@@ -136,11 +137,13 @@ class _AccountsScreenState extends State<AccountsScreen> {
           if (state.error != null) Hint(short: state.error),
           if (_tab == _Tab.sites) ...[
             if (state.accounts.isEmpty)
-              const Hint(
-                short: 'Нажмите «+ Сайт», введите адрес и логин — пароль появится сразу.',
-                learn:
-                    'Список ниже — это индекс: здесь запоминаются сайты, номера версий паролей и особые '
-                    'правила. Самих паролей в нём нет, он зашифрован ключом из вашей фразы.',
+              Hint(
+                short: tr(
+                  'Нажмите «+ Сайт», введите адрес и логин — пароль появится сразу.',
+                ),
+                learn: tr(
+                  'Список ниже — это индекс: здесь запоминаются сайты, номера версий паролей и особые правила. Самих паролей в нём нет, он зашифрован ключом из вашей фразы.',
+                ),
               ),
             for (final a in sites)
               Card(
@@ -160,10 +163,12 @@ class _AccountsScreenState extends State<AccountsScreen> {
             if (state.secrets.isEmpty)
               Hint(
                 short: state.proActive
-                    ? 'PIN-коды, кодовые слова, пароли Wi‑Fi и ключи SSH из той же фразы. '
-                          'Нажмите «+ Секрет».'
-                    : 'PIN-коды, кодовые слова, пароли Wi‑Fi и ключи SSH из той же фразы — '
-                          'функция Pro.',
+                    ? tr(
+                        'PIN-коды, кодовые слова, пароли Wi‑Fi и ключи SSH из той же фразы. Нажмите «+ Секрет».',
+                      )
+                    : tr(
+                        'PIN-коды, кодовые слова, пароли Wi‑Fi и ключи SSH из той же фразы — функция Pro.',
+                      ),
               ),
             for (final s in secrets)
               Card(
