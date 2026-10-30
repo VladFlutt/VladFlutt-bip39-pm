@@ -41,7 +41,7 @@ jobs:
       - run: dart format --output=none --set-exit-if-changed lib integration_test
       - run: flutter analyze
       - run: flutter test test
-      - run: xvfb-run -a flutter test integration_test -d linux
+      - run: xvfb-run -a flutter test integration_test/app_test.dart -d linux
 
   android:
     runs-on: ubuntu-latest
