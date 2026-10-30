@@ -138,9 +138,14 @@ class _SecretScreenState extends State<SecretScreen> {
                   ButtonSegment(
                     value: k,
                     icon: Icon(secretTypeIcons[k]),
-                    label: Text(
-                      secretTypeNames[k]!,
-                      key: Key('kind-${k.name}'),
+                    // Длинные названия (Words, Λέξεις) не переносятся, а уменьшаются.
+                    label: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        secretTypeNames[k]!,
+                        key: Key('kind-${k.name}'),
+                        maxLines: 1,
+                      ),
                     ),
                   ),
               ],
