@@ -113,7 +113,7 @@ jobs:
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: stable
-      - name: Build signed AAB
+      - name: Build signed AAB and RuStore APK
         if: steps.keys.outputs.ok
         env:
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
@@ -125,14 +125,20 @@ jobs:
           # Номер сборки растёт с каждым запуском: Play не принимает повтор versionCode.
           flutter build appbundle --release --dart-define=STORE=play \
             --build-number=$((GITHUB_RUN_NUMBER + 100))
+          # RuStore: обычный APK тем же ключом, со ссылками на покупку ключа.
+          flutter build apk --release --dart-define=STORE=rustore \
+            --build-number=$((GITHUB_RUN_NUMBER + 100))
           rm "$ANDROID_KEYSTORE_PATH"
           cp build/app/outputs/bundle/release/app-release.aab ManagerBIP-play.aab
+          cp build/app/outputs/flutter-apk/app-release.apk ManagerBIP-rustore.apk
       - uses: actions/upload-artifact@v4
         if: steps.keys.outputs.ok
         with:
           name: managerbip-play-aab
-          path: mobile/ManagerBIP-play.aab
-      - name: Publish AAB
+          path: |
+            mobile/ManagerBIP-play.aab
+            mobile/ManagerBIP-rustore.apk
+      - name: Publish AAB and APK
         if: steps.keys.outputs.ok
         env:
           GH_TOKEN: ${{ github.token }}
@@ -141,6 +147,10 @@ jobs:
             --prerelease --target "$GITHUB_SHA" --title "ManagerBIP для Google Play (AAB)" \
             --notes "Подписанный ключом загрузки AAB. Загружайте в Play Console: Тестирование → Закрытое тестирование."
           gh release upload android-play ManagerBIP-play.aab --clobber
+          gh release view android-rustore >/dev/null 2>&1 || gh release create android-rustore \
+            --prerelease --target "$GITHUB_SHA" --title "ManagerBIP для RuStore (APK)" \
+            --notes "Подписанный релизный APK. Загружайте в консоль RuStore: Приложения → Версии."
+          gh release upload android-rustore ManagerBIP-rustore.apk --clobber
 
   ios:
     runs-on: macos-latest
