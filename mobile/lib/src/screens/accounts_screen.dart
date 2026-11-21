@@ -142,7 +142,7 @@ class _AccountsScreenState extends State<AccountsScreen> {
                   'Нажмите «+ Сайт», введите адрес и логин — пароль появится сразу.',
                 ),
                 learn: tr(
-                  'Список ниже — это индекс: здесь запоминаются сайты, номера версий паролей и особые правила. Самих паролей в нём нет, он зашифрован ключом из вашей фразы.',
+                  'Индекс зашифрован ключом из вашей фразы. В нём хранятся сайты, версии, правила и свои пароли. Для восстановления своих паролей нужна резервная копия индекса.',
                 ),
               ),
             for (final a in sites)
@@ -152,7 +152,11 @@ class _AccountsScreenState extends State<AccountsScreen> {
                     child: Text(a.domain.substring(0, 1).toUpperCase()),
                   ),
                   title: Text(a.domain),
-                  subtitle: Text(a.login),
+                  subtitle: Text(
+                    a.customPassword == null
+                        ? a.login
+                        : '${a.login} · ${tr('Свой пароль')}',
+                  ),
                   trailing: a.counter > 1
                       ? Chip(label: Text('v${a.counter}'))
                       : null,

@@ -8,7 +8,7 @@ import '../frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
 // These functions are ignored because they are not marked as `pub`: `spec`
-// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`
 
 /// Размер секрета: `[минимум, максимум, по умолчанию]`; у SSH размера нет.
 Uint8List secretSizeBounds({required SecretType kind}) =>
@@ -110,6 +110,7 @@ class Account {
   final int counter;
   final PasswordPolicy policy;
   final String? note;
+  final String? customPassword;
 
   const Account({
     required this.domain,
@@ -117,6 +118,7 @@ class Account {
     required this.counter,
     required this.policy,
     this.note,
+    this.customPassword,
   });
 
   @override
@@ -125,7 +127,8 @@ class Account {
       login.hashCode ^
       counter.hashCode ^
       policy.hashCode ^
-      note.hashCode;
+      note.hashCode ^
+      customPassword.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -136,7 +139,8 @@ class Account {
           login == other.login &&
           counter == other.counter &&
           policy == other.policy &&
-          note == other.note;
+          note == other.note &&
+          customPassword == other.customPassword;
 }
 
 /// Вычисленный пароль и нормализованные параметры, под которыми он получен.

@@ -207,7 +207,7 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Удаляет ключи, списки и профили с устройства. Пароли восстановятся из seed-фразы.
+  /// Удаляет ключи, списки и профили. Для своих паролей нужна копия индекса.
   Future<void> forgetDevice() async {
     for (final p in profiles) {
       await _keys.clear(p.id);
@@ -258,7 +258,7 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Удаляет профиль с устройства (не основной). Пароли остаются в его фразе.
+  /// Удаляет профиль (не основной). Свои пароли требуют резервной копии.
   Future<void> deleteProfile(Profile p) async {
     if (p.id == Profile.main.id) return;
     await _index.clear(p.id);
@@ -401,8 +401,11 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> _persist(IndexData next) async {
+    final activeVault = vault;
+    final activeProfile = profile.id;
+    await _index.write(activeProfile, activeVault.encryptIndex(data: next));
+    if (!identical(_vault, activeVault) || profile.id != activeProfile) return;
     index = next;
-    await _index.write(profile.id, vault.encryptIndex(data: next));
     notifyListeners();
   }
 
@@ -426,19 +429,27 @@ class AppState extends ChangeNotifier {
     return null;
   }
 
-  Future<void> save(Account account) => _persist(
-    _with(
-      accounts:
-          [
-            for (final a in accounts)
-              if (a.domain != account.domain || a.login != account.login) a,
-            account,
-          ]..sort(
-            (a, b) =>
-                '${a.domain} ${a.login}'.compareTo('${b.domain} ${b.login}'),
-          ),
-    ),
-  );
+  Future<void> save(Account account) async {
+    final previous = find(account.domain, account.login);
+    if (account.customPassword != null &&
+        account.customPassword != previous?.customPassword &&
+        !proActive) {
+      throw StateError(tr('Свои пароли доступны в Pro'));
+    }
+    return _persist(
+      _with(
+        accounts:
+            [
+              for (final a in accounts)
+                if (a.domain != account.domain || a.login != account.login) a,
+              account,
+            ]..sort(
+              (a, b) =>
+                  '${a.domain} ${a.login}'.compareTo('${b.domain} ${b.login}'),
+            ),
+      ),
+    );
+  }
 
   Future<void> remove(Account account) =>
       _persist(_with(accounts: accounts.where((a) => a != account).toList()));

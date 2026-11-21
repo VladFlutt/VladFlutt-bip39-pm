@@ -84,6 +84,7 @@ fn sample() -> Index {
             counter: 2,
             policy: Policy::default(),
             note: None,
+            custom_password: None,
         }],
         secrets: vec![SecretEntry {
             label: "карта".into(),
@@ -147,6 +148,7 @@ fn merge_rules() {
         counter: 1,
         policy: Policy::default(),
         note: None,
+        custom_password: None,
     });
     incoming.secrets[0].counter = 5;
     incoming.secrets[0].label = "Карта".into();

@@ -78,3 +78,12 @@ export function upsertEntry(index, entry) {
   entries.sort((a, b) => (a.domain + "\u0000" + a.login < b.domain + "\u0000" + b.login ? -1 : 1));
   return { ...index, entries };
 }
+
+// Saved custom passwords are available even when Pro is no longer active.
+export function accountPassword(core, kApp, index, site, login, counter, policy) {
+  const result = core.password(kApp, site, login, counter, policy);
+  const saved = index.entries.find((e) => e.domain === result.domain && e.login === result.login);
+  return saved?.custom_password != null
+    ? { ...result, password: saved.custom_password, check: "Свой пароль" }
+    : result;
+}

@@ -75,7 +75,12 @@ flutter_rust_bridge_codegen generate
 
 ## Тесты
 
+Для тестов состояния и интерфейса нужна локальная Rust-библиотека:
+
 ```sh
+cargo build --release --locked --manifest-path rust/Cargo.toml
+flutter test test                                    # Pro, свои пароли, сохранение, локализация
+
 (cd rust && cargo test)                               # векторы SPEC через API моста
 flutter test integration_test -d linux                # сквозные сценарии (на Linux через xvfb-run)
 ```
