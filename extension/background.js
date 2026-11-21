@@ -3,7 +3,7 @@
 // закрытии браузера и недоступен content-скриптам) и стирается по таймеру.
 // Seed-фраза нигде не сохраняется.
 
-import { DEFAULT_POLICY, loadCore, upsertEntry } from "./core.js";
+import { DEFAULT_POLICY, loadCore, upsertEntry, accountPassword } from "./core.js";
 
 const AUTOLOCK_ALARM = "autolock";
 const AUTOLOCK_MINUTES = 15;
@@ -103,14 +103,14 @@ const handlers = {
     const { kApp } = await requireSession();
     const tab = await activeTab();
     const { domain } = await tabDomain(tab);
-    return (await core()).password(kApp, domain, login, Number(counter), normalizePolicy(policy));
+    return accountPassword(await core(), kApp, await loadIndex(kApp), domain, login, Number(counter), normalizePolicy(policy));
   },
 
   async fill({ login, counter, policy }) {
     const { kApp } = await requireSession();
     const tab = await activeTab();
     const { domain } = await tabDomain(tab);
-    const result = (await core()).password(kApp, domain, login, Number(counter), normalizePolicy(policy));
+    const result = accountPassword(await core(), kApp, await loadIndex(kApp), domain, login, Number(counter), normalizePolicy(policy));
     // Перед вставкой убеждаемся, что вкладка не ушла на другой сайт.
     const fresh = await chrome.tabs.get(tab.id);
     if ((await tabDomain(fresh)).domain !== domain) throw new Error("Страница сменилась, повторите");
@@ -129,9 +129,14 @@ const handlers = {
     const c = await core();
     // Ядро нормализует логин так же, как при деривации.
     const normalized = c.password(kApp, domain, login, Number(counter), normalizePolicy(policy));
-    const entry = { domain, login: normalized.login, counter: Number(counter), policy: normalizePolicy(policy) };
+    const index = await loadIndex(kApp);
+    const saved = index.entries.find((e) => e.domain === domain && e.login === normalized.login);
+    if (saved?.custom_password != null && Number(counter) !== saved.counter) {
+      throw new Error("Измените свой пароль в приложении ManagerBIP Pro.");
+    }
+    const entry = { ...saved, domain, login: normalized.login, counter: Number(counter), policy: normalizePolicy(policy) };
     if (note) entry.note = note;
-    await storeIndex(kApp, upsertEntry(await loadIndex(kApp), entry));
+    await storeIndex(kApp, upsertEntry(index, entry));
     return { saved: true };
   },
 

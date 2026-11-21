@@ -1074,12 +1074,14 @@ impl SseDecode for crate::api::pm::Account {
         let mut var_counter = <u32>::sse_decode(deserializer);
         let mut var_policy = <crate::api::pm::PasswordPolicy>::sse_decode(deserializer);
         let mut var_note = <Option<String>>::sse_decode(deserializer);
+        let mut var_customPassword = <Option<String>>::sse_decode(deserializer);
         return crate::api::pm::Account {
             domain: var_domain,
             login: var_login,
             counter: var_counter,
             policy: var_policy,
             note: var_note,
+            custom_password: var_customPassword,
         };
     }
 }
@@ -1436,6 +1438,7 @@ impl flutter_rust_bridge::IntoDart for crate::api::pm::Account {
             self.counter.into_into_dart().into_dart(),
             self.policy.into_into_dart().into_dart(),
             self.note.into_into_dart().into_dart(),
+            self.custom_password.into_into_dart().into_dart(),
         ]
         .into_dart()
     }
@@ -1664,6 +1667,7 @@ impl SseEncode for crate::api::pm::Account {
         <u32>::sse_encode(self.counter, serializer);
         <crate::api::pm::PasswordPolicy>::sse_encode(self.policy, serializer);
         <Option<String>>::sse_encode(self.note, serializer);
+        <Option<String>>::sse_encode(self.custom_password, serializer);
     }
 }
 

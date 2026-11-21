@@ -128,6 +128,7 @@ fn index_roundtrip_and_wrong_key() {
         counter: 1,
         policy: Policy::default(),
         note: None,
+        custom_password: None,
     });
     idx.upsert(Entry {
         domain: "a.com".into(),
@@ -135,6 +136,7 @@ fn index_roundtrip_and_wrong_key() {
         counter: 3,
         policy: Policy::default(),
         note: Some("pin".into()),
+        custom_password: None,
     });
     idx.upsert(Entry {
         domain: "b.com".into(),
@@ -142,6 +144,7 @@ fn index_roundtrip_and_wrong_key() {
         counter: 2,
         policy: Policy::default(),
         note: None,
+        custom_password: None,
     });
     assert_eq!(idx.entries.len(), 2);
     assert_eq!(idx.entries[0].domain, "a.com");

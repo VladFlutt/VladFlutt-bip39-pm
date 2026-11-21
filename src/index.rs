@@ -1,5 +1,5 @@
 //! Зашифрованный индекс аккаунтов: домены, логины, счётчики, политики.
-//! Паролей в нём нет. Там же секреты (метки без значений), шаблоны правил и правило
+//! Пользовательские пароли хранятся только внутри зашифрованного индекса. Там же секреты (метки без значений), шаблоны правил и правило
 //! по умолчанию: всё, что нужно перенести на другое устройство.
 //! Формат файла: `PMIX` | версия (1 байт) | nonce (24) |
 //! XChaCha20-Poly1305(JSON), заголовок — associated data.
@@ -14,6 +14,7 @@ use crate::{Error, Result};
 
 const MAGIC: &[u8; 4] = b"PMIX";
 const VERSION: u8 = 1;
+const CUSTOM_PASSWORD_VERSION: u8 = 2;
 const HEADER_LEN: usize = 5;
 pub const NONCE_LEN: usize = 24;
 
@@ -25,6 +26,9 @@ pub struct Entry {
     pub policy: Policy,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub note: Option<String>,
+    /// Пользовательский пароль: для восстановления необходима резервная копия индекса.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub custom_password: Option<String>,
 }
 
 /// Секрет без значения: вид, метка, счётчик.
@@ -94,7 +98,13 @@ impl Index {
         );
         let mut out = Vec::with_capacity(HEADER_LEN + NONCE_LEN + plain.len() + 16);
         out.extend_from_slice(MAGIC);
-        out.push(VERSION);
+        out.push(
+            if self.entries.iter().any(|e| e.custom_password.is_some()) {
+                CUSTOM_PASSWORD_VERSION
+            } else {
+                VERSION
+            },
+        );
         let ct = XChaCha20Poly1305::new(key.into())
             .encrypt(
                 XNonce::from_slice(nonce),
@@ -113,7 +123,7 @@ impl Index {
         if data.len() < HEADER_LEN + NONCE_LEN || &data[..4] != MAGIC {
             return Err(Error::Index("файл не является индексом".into()));
         }
-        if data[4] != VERSION {
+        if data[4] != VERSION && data[4] != CUSTOM_PASSWORD_VERSION {
             return Err(Error::Index(format!(
                 "неподдерживаемая версия индекса {}",
                 data[4]

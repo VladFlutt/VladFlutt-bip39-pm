@@ -960,14 +960,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   Account dco_decode_account(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 5)
-      throw Exception('unexpected arr length: expect 5 but see ${arr.length}');
+    if (arr.length != 6)
+      throw Exception('unexpected arr length: expect 6 but see ${arr.length}');
     return Account(
       domain: dco_decode_String(arr[0]),
       login: dco_decode_String(arr[1]),
       counter: dco_decode_u_32(arr[2]),
       policy: dco_decode_password_policy(arr[3]),
       note: dco_decode_opt_String(arr[4]),
+      customPassword: dco_decode_opt_String(arr[5]),
     );
   }
 
@@ -1247,12 +1248,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var var_counter = sse_decode_u_32(deserializer);
     var var_policy = sse_decode_password_policy(deserializer);
     var var_note = sse_decode_opt_String(deserializer);
+    var var_customPassword = sse_decode_opt_String(deserializer);
     return Account(
       domain: var_domain,
       login: var_login,
       counter: var_counter,
       policy: var_policy,
       note: var_note,
+      customPassword: var_customPassword,
     );
   }
 
@@ -1577,6 +1580,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_u_32(self.counter, serializer);
     sse_encode_password_policy(self.policy, serializer);
     sse_encode_opt_String(self.note, serializer);
+    sse_encode_opt_String(self.customPassword, serializer);
   }
 
   @protected

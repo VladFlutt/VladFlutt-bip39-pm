@@ -178,14 +178,20 @@ fn run(cli: Cli) -> AnyResult<()> {
             let counter = opts.counter.unwrap_or(base_counter);
             let policy = opts.apply(&base_policy);
             let site = Site { counter, ..probe };
-            print_password(&key, &site, &policy, quiet)?;
+            let existing = index.find(&site.domain, &site.login).cloned();
+            if let Some(password) = existing.as_ref().and_then(|e| e.custom_password.as_ref()) {
+                println!("{password}");
+            } else {
+                print_password(&key, &site, &policy, quiet)?;
+            }
             if save {
                 index.upsert(Entry {
                     domain: site.domain,
                     login: site.login,
                     counter,
                     policy,
-                    note: None,
+                    note: existing.as_ref().and_then(|e| e.note.clone()),
+                    custom_password: existing.and_then(|e| e.custom_password),
                 });
                 save_index(&key, &index, index_path.as_ref())?;
             }
@@ -203,7 +209,11 @@ fn run(cli: Cli) -> AnyResult<()> {
                     counter: 1,
                     policy: index.default_policy.unwrap_or_default(),
                     note: None,
+                    custom_password: None,
                 });
+            if entry.custom_password.is_some() {
+                return Err("у аккаунта свой пароль: измените его в приложении ManagerBIP".into());
+            }
             entry.counter += 1;
             let site = Site {
                 counter: entry.counter,

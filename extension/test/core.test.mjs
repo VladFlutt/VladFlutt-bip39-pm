@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
 
-import { DEFAULT_POLICY, loadCore, upsertEntry } from "../core.js";
+import { DEFAULT_POLICY, loadCore, upsertEntry, accountPassword } from "../core.js";
 
 const core = await loadCore(readFileSync(new URL("../pm_core.wasm", import.meta.url)));
 const ABANDON = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
@@ -112,4 +112,17 @@ test("Pro: код переноса вливается, чужие ключи н�
   const { k_app: other } = core.unlock(ABANDON, "другая");
   assert.throws(() => core.importCode(other, dst, code));
   assert.throws(() => core.license("MBIP-AAAA"), /ключ/);
+});
+
+
+test("свой пароль: шифрование, перенос и получение вместо генерации", () => {
+  const { k_app: k } = core.unlock(ABANDON);
+  const entry = { domain: "example.com", login: "user", counter: 2, policy: DEFAULT_POLICY, custom_password: "  My 🔑 password  " };
+  const index = { entries: [entry] };
+  const blob = core.encryptIndex(k, index);
+  assert.equal(blob.slice(8, 10), "02");
+  assert.deepEqual(core.decryptIndex(k, blob).entries, index.entries);
+  const restored = core.importCode(k, { entries: [] }, core.exportCode(k, index)).index;
+  assert.equal(accountPassword(core, k, restored, "https://example.com/login", " USER ", 2, DEFAULT_POLICY).password, entry.custom_password);
+  assert.equal(accountPassword(core, k, restored, "example.com", "other", 2, DEFAULT_POLICY).password, core.password(k, "example.com", "other", 2, DEFAULT_POLICY).password);
 });

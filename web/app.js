@@ -3,7 +3,7 @@
 // лежат зашифрованный индекс (домены, логины, счётчики, политики) и, если
 // пользователь создал вход по логину, k_app под мастер-паролем (Argon2id).
 
-import { DEFAULT_POLICY, loadCore, toHex, upsertEntry } from "./core.js";
+import { DEFAULT_POLICY, loadCore, toHex, upsertEntry, accountPassword } from "./core.js";
 
 const INDEX_KEY = "bip39-pm.index";
 const VAULTS_KEY = "bip39-pm.vaults";
@@ -492,7 +492,7 @@ function compute() {
     return null;
   }
   try {
-    const r = core.password(kApp, domain, login, Number($("counter").value), policy());
+    const r = accountPassword(core, kApp, index, domain, login, Number($("counter").value), policy());
     $("password").value = r.password;
     $("check").textContent = r.check;
     status("");
@@ -516,6 +516,7 @@ function saveCurrent(counterOverride) {
   const r = compute();
   if (!r) throw new Error("Укажите сайт и логин");
   const entry = {
+    ...findEntry(),
     domain: r.domain,
     login: r.login,
     counter: counterOverride ?? Number($("counter").value),
@@ -913,6 +914,7 @@ $("rotate").addEventListener(
   "click",
   guarded(async () => {
     if (!compute()) throw new Error("Укажите сайт и логин");
+    if (findEntry()?.custom_password != null) throw new Error("Измените свой пароль в приложении ManagerBIP Pro.");
     if (!confirm("Сменить пароль? Новый пароль нужно будет установить на сайте.")) return;
     $("counter").value = Number($("counter").value) + 1;
     saveCurrent();

@@ -56,7 +56,7 @@ impl From<PasswordPolicy> for Policy {
     }
 }
 
-/// Запись индекса: параметры аккаунта без пароля.
+/// Запись индекса: параметры аккаунта и необязательный свой пароль.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Account {
     pub domain: String,
@@ -64,6 +64,7 @@ pub struct Account {
     pub counter: u32,
     pub policy: PasswordPolicy,
     pub note: Option<String>,
+    pub custom_password: Option<String>,
 }
 
 impl From<Entry> for Account {
@@ -74,6 +75,7 @@ impl From<Entry> for Account {
             counter: e.counter,
             policy: e.policy.into(),
             note: e.note,
+            custom_password: e.custom_password,
         }
     }
 }
@@ -86,6 +88,7 @@ impl From<Account> for Entry {
             counter: a.counter,
             policy: a.policy.into(),
             note: a.note,
+            custom_password: a.custom_password,
         }
     }
 }
@@ -461,6 +464,7 @@ mod tests {
             counter: 3,
             policy: PasswordPolicy::default_policy(),
             note: Some("work".into()),
+            custom_password: Some("My custom password 🔑".into()),
         };
         let data = IndexData {
             accounts: vec![acc],
